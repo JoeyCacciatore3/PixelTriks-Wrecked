@@ -234,7 +234,7 @@ export class Arena {
     ]
 
     for (const r of configs) {
-      const centerY = rise - 0.15
+      const centerY = rise - 0.35
       const rampGroup = new THREE.Group()
       rampGroup.position.set(r.x, centerY, r.z)
       rampGroup.rotation.y = r.rotY
