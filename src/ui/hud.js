@@ -211,12 +211,12 @@ export class DerbyHUD {
       .hidden { display: none !important; }
 
       @media (max-width: 600px) {
-        #hud-health-bars { top: 8px; left: 8px; }
+        #hud-health-bars { top: max(8px, env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); }
         .hb-track { width: clamp(60px, 18vw, 120px); height: 5px; }
         .hb-label { font-size: 9px; }
         .hb-row.local { padding: 2px 3px; margin: -2px -3px; }
 
-        #hud-top-right { top: 8px; right: 8px; }
+        #hud-top-right { top: max(8px, env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
         .hud-timer { font-size: clamp(16px, 5vw, 28px); }
         .hud-speed { font-size: 10px; }
 

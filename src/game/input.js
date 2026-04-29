@@ -47,22 +47,22 @@ export class Input {
 
     // Joystick visuals (hidden until touch)
     const joyRing = document.createElement('div')
-    joyRing.style.cssText = 'position:absolute;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,68,0,0.3);display:none;transform:translate(-50%,-50%);pointer-events:none;'
+    joyRing.style.cssText = 'position:absolute;width:130px;height:130px;border-radius:50%;border:3px solid rgba(255,68,0,0.4);background:rgba(255,68,0,0.05);display:none;transform:translate(-50%,-50%);pointer-events:none;'
     container.appendChild(joyRing)
 
     const joyDot = document.createElement('div')
-    joyDot.style.cssText = 'position:absolute;width:40px;height:40px;border-radius:50%;background:rgba(255,68,0,0.4);display:none;transform:translate(-50%,-50%);pointer-events:none;'
+    joyDot.style.cssText = 'position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(255,68,0,0.5);border:2px solid rgba(255,68,0,0.7);display:none;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 10px rgba(255,68,0,0.3);'
     container.appendChild(joyDot)
 
-    // Buttons (right side)
+    // Buttons (right side) — two large buttons, stacked with FIRE on bottom (thumb reach)
     const btnWrap = document.createElement('div')
-    btnWrap.style.cssText = 'position:absolute;right:20px;bottom:30px;display:flex;flex-direction:column;gap:16px;pointer-events:auto;touch-action:none;'
+    btnWrap.style.cssText = 'position:absolute;right:16px;bottom:20px;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
     container.appendChild(btnWrap)
 
-    const fireBtn = this._makeTouchBtn('FIRE', 60, '#ff6600')
-    const jumpBtn = this._makeTouchBtn('BOOST', 60, '#44ddff')
-    btnWrap.appendChild(fireBtn)
+    const jumpBtn = this._makeTouchBtn('BOOST', 72, '#44ddff')
+    const fireBtn = this._makeTouchBtn('FIRE', 80, '#ff6600')
     btnWrap.appendChild(jumpBtn)
+    btnWrap.appendChild(fireBtn)
 
     // Joystick pointer events
     joyZone.addEventListener('pointerdown', (e) => {
@@ -121,9 +121,48 @@ export class Input {
     // Orientation overlay
     const orientOverlay = document.createElement('div')
     orientOverlay.id = 'orient-overlay'
-    orientOverlay.style.cssText = 'position:fixed;inset:0;z-index:50;background:rgba(8,0,14,0.95);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:ui-monospace,monospace;color:#ff4400;text-align:center;pointer-events:auto;'
-    orientOverlay.innerHTML = '<div style="font-size:36px;">📱↔️</div><div style="font-size:14px;letter-spacing:0.2em;">ROTATE FOR BEST EXPERIENCE</div><div style="font-size:10px;color:#666;letter-spacing:0.15em;">TAP TO DISMISS</div>'
     document.body.appendChild(orientOverlay)
+
+    const orientStyle = document.createElement('style')
+    orientStyle.textContent = `
+      #orient-overlay {
+        position:fixed;inset:0;z-index:50;
+        background:linear-gradient(135deg, rgba(8,0,14,0.97) 0%, rgba(30,10,50,0.97) 100%);
+        display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;
+        font-family:ui-monospace,'SF Mono',monospace;text-align:center;pointer-events:auto;
+      }
+      .orient-icon {
+        width:80px;height:48px;border:3px solid #eab308;border-radius:8px;position:relative;
+        animation:orient-rotate 2s ease-in-out infinite;
+      }
+      .orient-icon::after {
+        content:'';position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+        width:16px;height:3px;border-radius:2px;background:#eab308;
+      }
+      @keyframes orient-rotate { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-90deg)} }
+      .orient-title {
+        font-size:18px;font-weight:900;letter-spacing:0.2em;color:#eab308;
+        text-shadow:2px 2px 0 #ef4444;
+      }
+      .orient-sub {
+        font-size:11px;letter-spacing:0.15em;color:rgba(255,255,255,0.5);font-weight:bold;
+      }
+      .orient-dismiss {
+        margin-top:8px;padding:10px 28px;
+        background:transparent;border:2px solid rgba(255,255,255,0.2);border-radius:8px;
+        color:rgba(255,255,255,0.6);font-family:inherit;font-size:10px;font-weight:bold;
+        letter-spacing:0.2em;cursor:pointer;transition:border-color 0.2s,color 0.2s;
+      }
+      .orient-dismiss:active { border-color:#eab308;color:#eab308; }
+    `
+    document.head.appendChild(orientStyle)
+
+    orientOverlay.innerHTML = `
+      <div class="orient-icon"></div>
+      <div class="orient-title">ROTATE DEVICE</div>
+      <div class="orient-sub">LANDSCAPE MODE REQUIRED</div>
+      <button class="orient-dismiss">CONTINUE ANYWAY</button>
+    `
 
     const checkOrientation = () => {
       if (isPortrait()) {
@@ -134,15 +173,14 @@ export class Input {
     }
     checkOrientation()
     window.addEventListener('resize', checkOrientation)
-    orientOverlay.addEventListener('pointerdown', () => {
+    orientOverlay.querySelector('.orient-dismiss').addEventListener('pointerdown', () => {
       orientOverlay.style.display = 'none'
-      window.removeEventListener('resize', checkOrientation)
     })
 
     // Fullscreen toggle
     const fsBtn = document.createElement('div')
-    fsBtn.style.cssText = 'position:fixed;top:8px;left:8px;z-index:7;width:36px;height:36px;border-radius:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;color:#aaa;cursor:pointer;pointer-events:auto;'
-    fsBtn.textContent = '⛶'
+    fsBtn.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:7;padding:6px 14px;border-radius:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;letter-spacing:0.15em;color:rgba(255,255,255,0.5);font-family:ui-monospace,monospace;cursor:pointer;pointer-events:auto;'
+    fsBtn.textContent = 'FULLSCREEN'
     document.body.appendChild(fsBtn)
     fsBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault()
@@ -159,7 +197,7 @@ export class Input {
 
   _makeTouchBtn(label, size, color) {
     const btn = document.createElement('div')
-    btn.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:0.2em;color:${color};font-family:ui-monospace,monospace;opacity:0.6;user-select:none;`
+    btn.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;border:3px solid ${color};background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;letter-spacing:0.15em;color:${color};font-family:ui-monospace,'SF Mono',monospace;opacity:0.7;user-select:none;box-shadow:0 0 12px ${color}33,inset 0 0 8px ${color}22;`
     btn.textContent = label
     return btn
   }
