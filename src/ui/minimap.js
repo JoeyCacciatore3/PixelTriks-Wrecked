@@ -1,10 +1,9 @@
 import { CAR_COLORS } from '../game/car.js'
-import { isMobile } from '../util/detect.js'
 
 // Player-centered radar minimap.
 // MAP_SIZE is the canvas size in pixels. MAP_RANGE is the world-space radius (m)
 // that fits inside the canvas — anything further than this gets clamped to the rim.
-const MAP_SIZE  = 100
+const MAP_SIZE  = 120
 const MAP_RANGE = 90
 const SCALE     = (MAP_SIZE / 2) / MAP_RANGE
 const ARENA_W   = 200
@@ -12,13 +11,12 @@ const ARENA_D   = 250
 
 export class Minimap {
   constructor() {
-    if (isMobile) { this._canvas = null; return }
 
     this._canvas = document.createElement('canvas')
     this._canvas.width = MAP_SIZE
     this._canvas.height = MAP_SIZE
     this._canvas.style.cssText = `
-      position:fixed;bottom:14px;left:14px;z-index:6;
+      position:fixed;top:12px;right:12px;z-index:6;
       width:${MAP_SIZE}px;height:${MAP_SIZE}px;
       border:1px solid rgba(255,255,255,0.18);
       background:rgba(0,0,0,0.55);pointer-events:none;

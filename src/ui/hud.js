@@ -5,9 +5,6 @@ export class DerbyHUD {
     this._el        = null
     this._localSlot = -1
     this._bars      = {}
-    this._timerEl   = null
-    this._speedEl   = null
-    this._killsEl   = null
     this._statusEl  = null
     this._elapsed   = 0
     this._statusTimer = null
@@ -27,11 +24,6 @@ export class DerbyHUD {
     this._el.id = 'derby-hud'
     this._el.innerHTML = `
       <div id="hud-health-bars"></div>
-      <div id="hud-top-right">
-        <div id="hud-timer" class="hud-timer">0:00</div>
-        <div id="hud-speed" class="hud-speed">0 <span>km/h</span></div>
-        <div id="hud-kills" class="hud-kills">KILLS: 0</div>
-      </div>
       <div id="hud-status" class="hud-status hidden"></div>
       <div id="hud-countdown" class="hud-countdown hidden"></div>
     `
@@ -39,9 +31,6 @@ export class DerbyHUD {
     this._injectStyles()
 
     this._barsContainer = document.getElementById('hud-health-bars')
-    this._timerEl = document.getElementById('hud-timer')
-    this._speedEl = document.getElementById('hud-speed')
-    this._killsEl = document.getElementById('hud-kills')
     this._statusEl = document.getElementById('hud-status')
     this._countdownEl = document.getElementById('hud-countdown')
   }
@@ -78,20 +67,6 @@ export class DerbyHUD {
       if (car.eliminated) bar.wrap.classList.add('dead')
     }
 
-    const mins = Math.floor(this._elapsed / 60)
-    const secs = Math.floor(this._elapsed % 60)
-    if (this._timerEl) this._timerEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`
-
-    const localCar = derby.localCar
-    if (localCar && this._speedEl) {
-      const v = localCar.velocity
-      const kmh = Math.round(Math.hypot(v.x, v.z) * 3.6)
-      this._speedEl.innerHTML = `${kmh} <span>km/h</span>`
-    }
-
-    if (this._killsEl && derby.aiKills != null) {
-      this._killsEl.textContent = `KILLS: ${derby.aiKills}`
-    }
   }
 
   showStatus(msg, duration = 2200) {
@@ -148,12 +123,6 @@ export class DerbyHUD {
       .hb-track { width: 120px; height: 7px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
       .hb-fill  { height: 100%; transition: width 0.12s ease; }
 
-      #hud-top-right { position: absolute; top: 12px; right: 12px; text-align: right; }
-      .hud-timer { font-size: 28px; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.25); letter-spacing: 0.06em; }
-      .hud-speed { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 2px; letter-spacing: 0.1em; }
-      .hud-speed span { font-size: 9px; letter-spacing: 0.3em; }
-
-      .hud-kills { font-size: 16px; font-weight: bold; color: #ef4444; margin-top: 6px; letter-spacing: 0.15em; text-shadow: 2px 2px 0 #ffffff; }
 
       #hud-status {
         position: absolute; top: 40%; left: 50%;
@@ -215,10 +184,6 @@ export class DerbyHUD {
         .hb-track { width: clamp(60px, 18vw, 120px); height: 5px; }
         .hb-label { font-size: 9px; }
         .hb-row.local { padding: 2px 3px; margin: -2px -3px; }
-
-        #hud-top-right { top: max(8px, env(safe-area-inset-top, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
-        .hud-timer { font-size: clamp(16px, 5vw, 28px); }
-        .hud-speed { font-size: 10px; }
 
         #hud-status { font-size: clamp(20px, 7vw, 36px); }
       }
