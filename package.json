@@ -1,0 +1,21 @@
+{
+  "name": "wreckyard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WRECKYARD — 4-Player Demolition Derby. Last Car Standing. Vibe Jam 2026.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=wreckyard"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.14.0",
+    "peerjs": "^1.5.5",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
