@@ -695,7 +695,7 @@ export class Arena {
     const moundRadius = 2.0
     const moundHeight = 0.7
     const moundSegs = 12
-    const moundMat = new THREE.MeshStandardMaterial({ color: 0x3a3a48, roughness: 0.85, metalness: 0.2 })
+    const moundMat = new THREE.MeshStandardMaterial({ map: pillarTexture(), roughness: 0.85, metalness: 0.2 })
     const moundGeom = new THREE.SphereGeometry(moundRadius, moundSegs, moundSegs, 0, Math.PI * 2, 0, Math.PI / 2)
     moundGeom.scale(1, moundHeight / moundRadius, 1)
     const moundMesh = new THREE.InstancedMesh(moundGeom, moundMat, moundPositions.length)
