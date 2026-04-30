@@ -31,6 +31,10 @@ const RAMP_BASES = [
   { x: -56, z: 0, targetX: -45 },
   { x:  56, z: 0, targetX:  45 },
 ]
+const FLOOR3_RAMP_BASES = [
+  { x: 0, z: -21 },
+  { x: 0, z:  21 },
+]
 
 const AI_NAMES = ['HAL-9K', 'R.U.S.T', 'DEMOLON', 'WREX-4']
 
@@ -85,13 +89,18 @@ export class AIDriver {
     this._targetDist = nearestDist
     this._rampGoal = null
 
-    if (nearest && nearest.position.y - p.y > RAMP_SEEK_Y_THRESH && p.y < 3) {
-      let bestRamp = null, bestDist = Infinity
-      for (const rb of RAMP_BASES) {
-        const d = Math.hypot(p.x - rb.x, p.z - rb.z)
-        if (d < bestDist) { bestDist = d; bestRamp = rb }
+    if (nearest && nearest.position.y - p.y > RAMP_SEEK_Y_THRESH) {
+      let ramps = null
+      if (p.y < 3) ramps = RAMP_BASES
+      else if (p.y > 5 && p.y < 12) ramps = FLOOR3_RAMP_BASES
+      if (ramps) {
+        let bestRamp = null, bestDist = Infinity
+        for (const rb of ramps) {
+          const d = Math.hypot(p.x - rb.x, p.z - rb.z)
+          if (d < bestDist) { bestDist = d; bestRamp = rb }
+        }
+        if (bestRamp) this._rampGoal = bestRamp
       }
-      if (bestRamp) this._rampGoal = bestRamp
     }
 
     this._input.firePressed = nearest != null && nearestDist < FIRE_DISTANCE

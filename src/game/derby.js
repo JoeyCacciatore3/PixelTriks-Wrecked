@@ -120,14 +120,22 @@ export class DerbyGame {
     this._humanSlots.add(slotIndex)
     const car = this._ensureCar(slotIndex, true)
     car.isHuman = true
-    if (SPAWN_POINTS[slotIndex]) car.spawnAt(SPAWN_POINTS[slotIndex], 0)
+    this._spawnPlayer(car, slotIndex)
   }
 
   addRemotePlayer(slotIndex) {
     this._humanSlots.add(slotIndex)
     const car = this._ensureCar(slotIndex, false)
     car.isHuman = true
-    if (SPAWN_POINTS[slotIndex]) car.spawnAt(SPAWN_POINTS[slotIndex], 0)
+    this._spawnPlayer(car, slotIndex)
+  }
+
+  _spawnPlayer(car, slotIndex) {
+    if (this.state === DerbyState.PLAYING || this.state === DerbyState.COUNTDOWN) {
+      car.spawnAt({ x: 0, y: 25, z: 0 }, Math.random() * Math.PI * 2, 3)
+    } else if (SPAWN_POINTS[slotIndex]) {
+      car.spawnAt(SPAWN_POINTS[slotIndex], 0)
+    }
   }
 
   addAI(slotIndex) {
@@ -190,7 +198,7 @@ export class DerbyGame {
     const angle = Math.random() * Math.PI * 2
     const spawnX = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 40)
     const spawnZ = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 50)
-    car.spawnAt({ x: spawnX, y: 0.7, z: spawnZ }, angle)
+    car.spawnAt({ x: spawnX, y: 0.82, z: spawnZ }, angle)
   }
 
   _countAliveAI() {

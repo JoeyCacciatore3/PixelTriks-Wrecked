@@ -23,10 +23,10 @@ export const FLOOR3_HALF = 10
 
 // Spawn positions (slot 0-3) + facing angles — spread for bigger map
 export const SPAWN_POINTS = [
-  { x: -75, y: 0.7, z: -95, angle: Math.PI * 0.25 },
-  { x:  75, y: 0.7, z:  95, angle: Math.PI * 1.25 },
-  { x:  75, y: 0.7, z: -95, angle: Math.PI * 0.75 },
-  { x: -75, y: 0.7, z:  95, angle: Math.PI * 1.75 },
+  { x: -75, y: 0.82, z: -95, angle: Math.PI * 0.25 },
+  { x:  75, y: 0.82, z:  95, angle: Math.PI * 1.25 },
+  { x:  75, y: 0.82, z: -95, angle: Math.PI * 0.75 },
+  { x: -75, y: 0.82, z:  95, angle: Math.PI * 1.75 },
 ]
 
 export class Arena {

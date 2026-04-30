@@ -16,6 +16,8 @@ const BOOST_MAX_SPEED  = 38
 const GROUND_RAY_DIST  = 0.55
 const LEVEL_TORQUE     = 12
 const LEVEL_SLOPE_MAX  = 0.52
+const SELF_RIGHT_TORQUE = 25
+const SELF_RIGHT_THRESHOLD = 0.7
 
 const BULLET_SPEED     = 60
 const BULLET_LIFETIME  = 1.5
@@ -52,6 +54,7 @@ export class Car {
     this._fireCooldown = 0
     this._ammo         = MAX_AMMO
     this._hitFlash     = 0
+    this._spawnShield  = 0
     this._boostTimer   = 0
     this._boostCooldown = 0
 
@@ -64,7 +67,7 @@ export class Car {
     this._bulletMesh = null;
 
     this._buildMesh();
-    this._buildPhysics({ x: 0, y: 1, z: 0 });
+    this._buildPhysics({ x: 0, y: 1.12, z: 0 });
     this._buildBulletPool();
   }
 
@@ -232,12 +235,13 @@ export class Car {
   get velocity() { return this._body.linvel(); }
   get speed()    { const v = this.velocity; return Math.hypot(v.x, v.y, v.z); }
 
-  spawnAt(pos, angle = 0) {
+  spawnAt(pos, angle = 0, shieldTime = 0) {
     this._body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
     _tmpQ.setFromAxisAngle(_tmpV.set(0, 1, 0), angle);
     this._body.setRotation({ x: _tmpQ.x, y: _tmpQ.y, z: _tmpQ.z, w: _tmpQ.w }, true);
     this._body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this._body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    this._spawnShield = shieldTime
   }
 
   update(dt, input = null) {
@@ -249,6 +253,7 @@ export class Car {
     _tmpQ.set(rot.x, rot.y, rot.z, rot.w)
 
     this._updateGroundCheck(pos, dt)
+    this._applySelfRighting(dt)
     if (input) this._applyInput(dt, input, vel)
     this._updateWheels(vel, dt)
     this._updateSkidMarks(pos, vel, input, dt)
@@ -285,6 +290,20 @@ export class Car {
       x: correction.x * LEVEL_TORQUE * dt,
       y: 0,
       z: correction.z * LEVEL_TORQUE * dt
+    }, true)
+  }
+
+  _applySelfRighting(dt) {
+    const carUp = _tmpV.set(0, 1, 0).applyQuaternion(_tmpQ)
+    const upDot = carUp.y
+    if (upDot > SELF_RIGHT_THRESHOLD) return
+    const worldUp = _tmpV3.set(0, 1, 0)
+    const correction = _tmpV2.crossVectors(carUp, worldUp)
+    const strength = SELF_RIGHT_TORQUE * (1 - upDot)
+    this._body.applyTorqueImpulse({
+      x: correction.x * strength * dt,
+      y: 0,
+      z: correction.z * strength * dt
     }, true)
   }
 
@@ -331,6 +350,7 @@ export class Car {
       if (_sharedCamera) this._numMesh.quaternion.copy(_sharedCamera.quaternion)
     }
 
+    if (this._spawnShield > 0) this._spawnShield -= dt
     if (this._hitFlash > 0) {
       this._hitFlash = Math.max(0, this._hitFlash - dt * 5)
       if (this._bodyMat) this._bodyMat.emissiveIntensity = 0.12 + this._hitFlash * 0.88
@@ -448,6 +468,7 @@ export class Car {
 
   applyDamage(amount, attackerSlot) {
     if (this.eliminated) return
+    if (this._spawnShield > 0) return
     const was = this.health
     this.health = Math.max(0, this.health - amount)
     this._hitFlash = 1.0
