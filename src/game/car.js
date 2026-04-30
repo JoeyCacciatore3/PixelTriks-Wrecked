@@ -234,7 +234,7 @@ export class Car {
   _buildPhysics(position) {
     const { body, collider } = this.physics.createBoxBody({
       position, hw: 0.65, hh: 0.38, hd: 1.1,
-      linearDamping: 0.6, angularDamping: 3.5
+      linearDamping: 0.6, angularDamping: isMobile ? 4.5 : 3.5
     });
     this._body     = body;
     this._collider = collider;
