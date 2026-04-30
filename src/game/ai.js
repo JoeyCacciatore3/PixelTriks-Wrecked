@@ -11,8 +11,8 @@ const BOOST_DISTANCE_MAX = 18
 const BOOST_CHANCE       = 0.08
 const STEER_SMOOTH       = 6
 const THINK_INTERVAL     = 0.18
-const STUCK_SPEED        = 1
-const STUCK_TIME         = 0.6
+const STUCK_SPEED        = 0.8
+const STUCK_TIME         = 1.2
 const REVERSE_TIME       = 0.7
 const WALL_MARGIN        = 10
 
@@ -20,14 +20,14 @@ const ARENA_HW = 100
 const ARENA_HD = 125
 
 const RAMP_BASES_F2 = [
-  { x: 0,   z: -81 },
-  { x: 0,   z:  81 },
-  { x: -81, z: 0 },
-  { x:  81, z: 0 },
+  { x: 0,   z: -82 },
+  { x: 0,   z:  82 },
+  { x: -82, z: 0 },
+  { x:  82, z: 0 },
 ]
 const RAMP_BASES_F3 = [
-  { x: 0, z: -32 },
-  { x: 0, z:  32 },
+  { x: 0, z: -35 },
+  { x: 0, z:  35 },
 ]
 
 const AI_NAMES = ['HAL-9K', 'R.U.S.T', 'DEMOLON', 'WREX-4']
@@ -83,8 +83,8 @@ export class AIDriver {
     }
     this._target = nearest
     this._targetDist = nearestDist
-    const onRampF2 = p.y > 1.5 && p.y < 6.5
-    const onRampF3 = p.y > 9.5 && p.y < 14.5
+    const onRampF2 = p.y > 1.0 && p.y < 6.5
+    const onRampF3 = p.y > 9.0 && p.y < 14.5
 
     if (onRampF2 || onRampF3) {
       this._rampGoal = { x: 0, z: 0 }
@@ -101,7 +101,11 @@ export class AIDriver {
             const d = Math.hypot(p.x - r.x, p.z - r.z)
             if (d < bestD) { bestD = d; best = r }
           }
-          if (best) this._rampGoal = best
+          if (best) {
+            // Once close to the ramp base, commit to driving towards center to go UP
+            if (bestD < 8) this._rampGoal = { x: 0, z: 0 }
+            else this._rampGoal = best
+          }
         }
       }
     }

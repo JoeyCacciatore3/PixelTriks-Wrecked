@@ -816,6 +816,7 @@ export class Arena {
         hd: r.dirZ !== 0 ? f2Horiz * 0.2 : F2_RAMP_W / 2,
         friction: 0.1, restitution: 0.1
       })
+
     }
 
     const f3tilt = Math.asin((FLOOR3_H - FLOOR2_H + 0.5) / 24)
@@ -834,6 +835,7 @@ export class Arena {
         hw: 2.625, hh: fillH / 2, hd: f3Horiz * 0.2,
         friction: 0.1, restitution: 0.1
       })
+
     }
   }
 
