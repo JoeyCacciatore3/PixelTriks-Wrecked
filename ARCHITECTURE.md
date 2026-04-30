@@ -4,7 +4,7 @@
 
 | File | Lines | Purpose |
 |---|---|---|
-| `src/main.js` | 213 | Boot sequence, game loop, state wiring, module instantiation |
+| `src/main.js` | 218 | Boot sequence, game loop, state wiring, module instantiation, portal auto-start |
 | **Game** | | |
 | `src/game/arena.js` | 776 | Arena geometry: floor, walls (convex hull wedges), death ramps, platforms, half-pipe corners, InstancedMesh stumps/trims |
 | `src/game/car.js` | 474 | Car mesh (body, cabin, bumpers, wheels, underglow), machine gun (InstancedMesh bullet pool), hit flash, physics body, controls, damage |
@@ -20,12 +20,12 @@
 | `src/game/engine.js` | 98 | Three.js renderer, scene, lights, skybox, ground mesh |
 | **Networking** | | |
 | `src/net/room.js` | 200 | PeerJS WebRTC room: host/guest, star topology, heartbeat (2s ping, 6s timeout), slot management |
-| `src/net/sync.js` | 159 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay |
+| `src/net/sync.js` | 180 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay, barrel explosion sync |
 | **UI** | | |
 | `src/ui/lobby.js` | 274 | Lobby screen: solo/multiplayer, room code, slot grid, portal link |
 | `src/ui/hud.js` | 228 | Dynamic health bars, timer, speed, kill counter, countdown overlay |
 | `src/ui/results.js` | 164 | Match results: stat boxes, leaderboard table, play again, portal link |
-| `src/ui/minimap.js` | 107 | Radar-style canvas minimap: car dots, local triangle, arena outline (desktop only) |
+| `src/ui/minimap.js` | 107 | Radar-style canvas minimap: car dots, local triangle, arena outline, top-right, 120px |
 | `src/ui/killfeed.js` | 58 | Elimination notifications with damage attribution (auto-fade) |
 | **Util** | | |
 | `src/util/detect.js` | 4 | `isMobile` / `isPortrait` detection |
@@ -84,7 +84,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 | `car:eliminated` | slot, pos | car.js `_eliminate()` | effects, audio, hud, derby, killfeed |
 | `car:skid` | left, right, angle | car.js `_updateSkidMarks()` | effects |
 | `car:fire` | slot, pos | car.js `_fireBullet()` | effects, audio |
-| `barrel:explode` | pos, radius, damage, attackerSlot | obstacles.js `_explodeBarrel()` | derby, effects, audio |
+| `barrel:explode` | pos, radius, damage, attackerSlot, barrelIdx | obstacles.js `_explodeBarrel()` | derby, effects, audio, sync |
 | `obstacle:hit` | pos | obstacles.js `damageBarrel()` | effects, audio |
 | `derby:start` | — | derby.js `_startPlaying()` | audio |
 | `derby:winner` | slot | derby.js `update()` | audio |
@@ -106,6 +106,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 | `move` | Broadcast | slot, pos, rot, vel, hp |
 | `damage` | Host → All | slot, amount, attackerSlot |
 | `elim` | Host → All | slot |
+| `barrel_explode` | Host → All | barrelIdx, pos, radius, damage, attackerSlot |
 | `state` | Host → All | state (COUNTDOWN) |
 | `ping` | Bidirectional | t |
 | `pong` | Bidirectional | t |

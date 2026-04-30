@@ -81,6 +81,36 @@
 
 **Files modified (13):** arena.js, car.js, derby.js, ai.js, engine.js, camera.js, obstacles.js, main.js, hud.js, results.js, killfeed.js, minimap.js, effects.js
 
+### Phase 11 — Final Polish & Compliance ✅ COMPLETE
+
+**Mobile UX overhaul:**
+- Touch buttons: FIRE 60→80px, BOOST 60→72px, thicker borders, background fills, bold text
+- Joystick: ring 120→130px, dot 40→48px, border + glow for visibility
+- Orientation overlay: CSS animated phone icon replacing emoji, persistent resize listener
+- Fullscreen button: Unicode ⛶ replaced with "FULLSCREEN" text label
+- HUD safe area insets for notched devices (iPhone X+)
+
+**Gameplay fixes:**
+- Death ramps: lowered centerY offset 0.15→0.35, bottom edge now below ground (zero bump)
+- Bullet impact mini-explosions: 85% smaller than barrel (scale 1.2, 300ms)
+- Dead cars non-collidable: `collider.setEnabled(false)` on elimination
+
+**Minimap:**
+- Moved from bottom-left to top-right
+- 20% larger (100→120px)
+- Visible on mobile (was hidden)
+- Top-right stats panel (timer/speed/kills) removed
+
+**Multiplayer barrel sync (was completely missing):**
+- obstacles.js: `barrel:explode` event includes `barrelIdx`
+- derby.js: host broadcasts barrel explosions via sync
+- sync.js: new `barrel_explode` message type, guests fire local visual + hide barrel + schedule respawn
+
+**Vibe Jam compliance — incoming portal support:**
+- main.js: detects `?portal=true` URL param, auto-starts solo (skips lobby)
+- arena.js: portal ring redirects to `ref` URL for return-path capability
+- Passes all Vibe Jam 2026 rules
+
 ---
 
 ## Completed Phases — Audit Issues
