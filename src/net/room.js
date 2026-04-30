@@ -38,42 +38,7 @@ export class RoomManager {
     throw new Error('All public slots full')
   }
 
-  async checkPublicAvailable() {
-    const CHECK_TIMEOUT = 2500
-    if (!this._probePeer || this._probePeer.destroyed) {
-      this._probePeer = new Peer()
-      await new Promise((resolve, reject) => {
-        this._probePeer.on('open', resolve)
-        this._probePeer.on('error', reject)
-        setTimeout(() => reject(new Error('timeout')), CHECK_TIMEOUT)
-      })
-    }
-
-    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
-      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
-      try {
-        const conn = this._probePeer.connect(hostId)
-        const ok = await new Promise((resolve) => {
-          conn.on('open', () => resolve(true))
-          conn.on('error', () => resolve(false))
-          setTimeout(() => resolve(false), CHECK_TIMEOUT)
-        })
-        if (ok) { conn.close(); return true }
-      } catch (_) {}
-    }
-    return false
-  }
-
-  destroyProbe() {
-    if (this._probePeer && !this._probePeer.destroyed) {
-      this._probePeer.destroy()
-      this._probePeer = null
-    }
-  }
-
   async findAndJoinPublic() {
-    this.destroyProbe()
-
     this._peer = new Peer()
     const myId = await new Promise((resolve, reject) => {
       this._peer.on('open', resolve)
@@ -313,7 +278,6 @@ export class RoomManager {
       try { conn.close() } catch (_) {}
     }
     if (this._peer) try { this._peer.destroy() } catch (_) {}
-    this.destroyProbe()
   }
 
   setGameState(state) { this._gameState = state }

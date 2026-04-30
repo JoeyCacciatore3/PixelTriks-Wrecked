@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { isMobile } from '../util/detect.js';
 
 const _explosionTex = new THREE.TextureLoader().load('textures/explosion.png')
+const _heartburstTex = new THREE.TextureLoader().load('textures/heartburst.png')
 
 // ── Particle pool ──
 
@@ -116,24 +117,29 @@ class DamageNumbers {
     }
   }
 
-  spawn(pos, damage) {
+  spawn(pos, damage, heal = false) {
     const n = this._numbers.find(x => x.age >= x.lifetime)
     if (!n) return
     n.x = pos.x
     n.y = pos.y + 1.5
     n.z = pos.z
     n.age = 0
+    n.baseScale = heal ? 3 : 1
     n.mesh.position.set(n.x, n.y, n.z)
     n.mesh.visible = true
     n.mat.opacity = 1
 
     const ctx = n.canvas.getContext('2d')
     ctx.clearRect(0, 0, 128, 128)
-    ctx.fillStyle = '#ff4444'
+    ctx.fillStyle = heal ? '#22ff44' : '#ff4444'
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = heal ? 4 : 0
     ctx.font = 'bold 64px ui-monospace, monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(String(Math.floor(damage)), 64, 64)
+    const text = heal ? '+' + Math.floor(Math.abs(damage)) : String(Math.floor(damage))
+    if (heal) ctx.strokeText(text, 64, 64)
+    ctx.fillText(text, 64, 64)
     n.tex.needsUpdate = true
   }
 
@@ -146,7 +152,7 @@ class DamageNumbers {
       if (this._camera) n.mesh.quaternion.copy(this._camera.quaternion)
       const t = n.age / n.lifetime
       n.mat.opacity = Math.max(0, 1 - t)
-      n.mesh.scale.setScalar(1 + t * 0.3)
+      n.mesh.scale.setScalar((n.baseScale || 1) * (1 + t * 0.3))
       if (n.age >= n.lifetime) n.mesh.visible = false
     }
   }
@@ -237,12 +243,54 @@ export class Effects {
     requestAnimationFrame(animate)
   }
 
+  _initHeartburstPool() {
+    const POOL = this._mobile ? 3 : 6
+    this._heartburstPool = []
+    for (let i = 0; i < POOL; i++) {
+      const mat = new THREE.SpriteMaterial({ map: _heartburstTex, transparent: true, opacity: 0, depthWrite: false })
+      const sprite = new THREE.Sprite(mat)
+      sprite.visible = false
+      this._scene.add(sprite)
+      this._heartburstPool.push({ sprite, mat, active: false })
+    }
+  }
+
+  _spawnHeartburstSprite(pos) {
+    if (!this._heartburstPool) this._initHeartburstPool()
+    const entry = this._heartburstPool.find(e => !e.active)
+    if (!entry) return
+    entry.active = true
+    entry.sprite.visible = true
+    entry.sprite.position.set(pos.x, pos.y + 2, pos.z)
+    entry.sprite.scale.set(0.3, 0.3, 0.3)
+    entry.mat.opacity = 1
+    const start = performance.now()
+    const duration = 600
+    const animate = () => {
+      const t = (performance.now() - start) / duration
+      if (t >= 1) { entry.sprite.visible = false; entry.active = false; return }
+      const s = 0.3 + 4.7 * Math.min(1, t * 2.5)
+      entry.sprite.scale.set(s, s, s)
+      entry.sprite.position.y = pos.y + 2 + t * 1.5
+      entry.mat.opacity = t < 0.3 ? 1 : 1 - (t - 0.3) / 0.7
+      requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+  }
+
   _burst(pos, count, color, opts) {
     this.particles.burst(pos, this._mobile ? Math.ceil(count * 0.5) : count, color, opts)
   }
 
   _onHit(d) {
     const damage = d?.damage ?? 10;
+    if (damage < 0 && d?.pos) {
+      this._spawnHeartburstSprite(d.pos)
+      this._burst(d.pos, 12, 0xff69b4, { speed: 5, lifetime: 0.6, gravity: -4, upBias: 4 })
+      this._burst(d.pos, 8, 0xffc0cb, { speed: 3, lifetime: 0.8, gravity: -2, upBias: 3, size: 0.6 })
+      this.damageNumbers.spawn(d.pos, damage, true)
+      return
+    }
     this._burst(d?.pos, 16, 0xff3300, { speed: 10, lifetime: 0.5 });
     if (d?.pos) {
       this.damageNumbers.spawn(d.pos, damage);

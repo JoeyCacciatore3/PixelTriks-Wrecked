@@ -36,7 +36,10 @@ export class AudioBus {
 
   _wireEvents() {
     window.addEventListener('car:boost',      () => this.play('boost'))
-    window.addEventListener('car:hit',        (e) => this.play('hit', e.detail))
+    window.addEventListener('car:hit',        (e) => {
+      const d = e.detail
+      this.play(d.damage < 0 ? 'heal' : 'hit', d)
+    })
     window.addEventListener('car:eliminated', () => this.play('eliminate'))
     window.addEventListener('derby:start',    () => this.play('derby_start'))
     window.addEventListener('derby:winner',   () => this.play('winner'))
@@ -150,6 +153,35 @@ SOUNDS.hit = (ctx, out, detail = {}) => {
   const og = ctx.createGain(); og.gain.setValueAtTime(0.3, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
   osc.connect(og); og.connect(out); osc.start(t); osc.stop(t + 0.24);
 };
+
+// ── Heal pickup (bright ascending chime) ──
+SOUNDS.heal = (ctx, out) => {
+  const t = ctx.currentTime
+  const notes = [523, 659, 784]
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    const g = ctx.createGain()
+    const s = t + i * 0.08
+    g.gain.setValueAtTime(0.3, s)
+    g.gain.exponentialRampToValueAtTime(0.001, s + 0.3)
+    osc.connect(g)
+    g.connect(out)
+    osc.start(s)
+    osc.stop(s + 0.32)
+  })
+  const shimmer = ctx.createOscillator()
+  shimmer.type = 'triangle'
+  shimmer.frequency.value = 1568
+  const sg = ctx.createGain()
+  sg.gain.setValueAtTime(0.12, t + 0.15)
+  sg.gain.exponentialRampToValueAtTime(0.001, t + 0.5)
+  shimmer.connect(sg)
+  sg.connect(out)
+  shimmer.start(t + 0.15)
+  shimmer.stop(t + 0.52)
+}
 
 // ── Barrel hit ──
 SOUNDS.barrel_hit = (ctx, out) => {

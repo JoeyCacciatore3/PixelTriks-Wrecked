@@ -102,7 +102,6 @@ async function boot() {
   async function startPlay() {
     if (_playStarted || derby.state !== DerbyState.LOBBY || derby.allCars.length > 0) return
     _playStarted = true
-    stopBgScan()
     derby.addLocalPlayer(0)
     hud.setLocalSlot(0)
     effects.setLocalSlot(0)
@@ -116,49 +115,24 @@ async function boot() {
     } catch (_) {}
   }
 
-  // ── Background scan for joinable public games ──
+  // ── Join any available room ──
 
-  let _bgScanTimer = null
-
-  function startBgScan() {
-    if (_bgScanTimer) return
-    async function scan() {
-      if (_playStarted || derby.state !== DerbyState.LOBBY) { stopBgScan(); return }
-      try {
-        const available = await room.checkPublicAvailable()
-        lobby.setJoinAvailable(available)
-      } catch (_) {
-        lobby.setJoinAvailable(false)
-      }
-      _bgScanTimer = setTimeout(scan, 4000)
-    }
-    scan()
-  }
-
-  function stopBgScan() {
-    if (_bgScanTimer) { clearTimeout(_bgScanTimer); _bgScanTimer = null }
-    lobby.setJoinAvailable(false)
-    room.destroyProbe()
-  }
-
-  startBgScan()
-
-  // ── Join public game ──
-
-  window.addEventListener('lobby:join_public', async () => {
+  window.addEventListener('lobby:join_any', async () => {
     if (_playStarted || derby.state !== DerbyState.LOBBY) return
     _playStarted = true
-    stopBgScan()
     try {
       const joined = await room.findAndJoinPublic()
+      lobby.hideSearching()
       if (joined) {
-        lobby.showSlotGrid()
+        lobby.enterAsGuest()
         derby.setSyncManager(sync, false)
         return
       }
-    } catch (_) {}
+    } catch (_) {
+      lobby.hideSearching()
+    }
     _playStarted = false
-    startBgScan()
+    lobby.showToast('NO ROOMS FOUND')
   })
 
   window.addEventListener('lobby:play', () => startPlay());
@@ -175,7 +149,7 @@ async function boot() {
     if (room.isHost) room.broadcastState('COUNTDOWN')
   })
 
-  // ── Private room — host flow ──
+  // ── Create room — host flow ──
 
   lobby.onStart = async () => {
     const code = await room.createRoom()
@@ -189,11 +163,11 @@ async function boot() {
     derby.startLobby()
   };
 
-  // ── Private room — join flow ──
+  // ── Join room — guest flow ──
 
   lobby.onJoin = async (code) => {
     await room.joinRoom(code)
-    lobby.showSlotGrid()
+    lobby.enterAsGuest()
     derby.setSyncManager(sync, false)
   };
 
@@ -223,6 +197,11 @@ async function boot() {
     if (car && !car.eliminated && !derby.drivers[slot]) {
       derby.addAI(slot)
     }
+  })
+
+  window.addEventListener('lobby:leave_room', () => {
+    room.leave()
+    _playStarted = false
   })
 
   window.addEventListener('room:state_change', (e) => {
