@@ -105,6 +105,7 @@ export class Obstacles {
     const pos = barrel.body.translation()
     window.dispatchEvent(new CustomEvent('barrel:explode', {
       detail: {
+        barrelIdx: barrel.idx,
         pos: { x: pos.x, y: pos.y, z: pos.z },
         radius: BARREL_EXPLODE_RADIUS,
         damage: BARREL_EXPLODE_DMG,

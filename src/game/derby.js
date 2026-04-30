@@ -81,7 +81,13 @@ export class DerbyGame {
       this._rebuildCarCaches()
     })
     window.addEventListener('barrel:explode', (e) => {
-      if (this._isHost) this._applyExplosion(e.detail)
+      if (this._isHost) {
+        this._applyExplosion(e.detail)
+        if (this._sync) {
+          const d = e.detail
+          this._sync.broadcastBarrelExplode(d.barrelIdx, d.pos, d.radius, d.damage, d.attackerSlot)
+        }
+      }
     })
   }
 

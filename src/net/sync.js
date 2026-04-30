@@ -14,9 +14,10 @@ export class SyncManager {
 
     window.addEventListener('room:msg', (e) => {
       const { type, payload, from } = e.detail
-      if (type === 'move')   this._onMove(payload, from)
-      if (type === 'damage') this._onDamage(payload)
-      if (type === 'elim')   this._onElim(payload)
+      if (type === 'move')           this._onMove(payload, from)
+      if (type === 'damage')         this._onDamage(payload)
+      if (type === 'elim')           this._onElim(payload)
+      if (type === 'barrel_explode') this._onBarrelExplode(payload)
     })
   }
 
@@ -155,5 +156,26 @@ export class SyncManager {
 
   broadcastElim(slot) {
     this.room.broadcast('elim', { slot })
+  }
+
+  broadcastBarrelExplode(barrelIdx, pos, radius, damage, attackerSlot) {
+    this.room.broadcast('barrel_explode', { barrelIdx, pos, radius, damage, attackerSlot })
+  }
+
+  _onBarrelExplode(data) {
+    const { barrelIdx, pos, radius, damage, attackerSlot } = data
+    window.dispatchEvent(new CustomEvent('barrel:explode', {
+      detail: { pos, radius, damage, attackerSlot }
+    }))
+    const obstacles = this.derby._obstacles
+    if (obstacles) {
+      const barrel = obstacles._barrels[barrelIdx]
+      if (barrel && barrel.alive) {
+        obstacles._hideBarrel(barrel)
+        setTimeout(() => {
+          if (!barrel.alive) obstacles._respawnBarrel(barrel)
+        }, 10000)
+      }
+    }
   }
 }
