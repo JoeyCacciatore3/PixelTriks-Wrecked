@@ -38,6 +38,9 @@ const _hideM4 = new THREE.Matrix4().makeScale(0, 0, 0)
 let _sharedCamera = null
 export function setCarCamera(cam) { _sharedCamera = cam }
 
+const _skidDetail = { left: { x: 0, y: 0.02, z: 0 }, right: { x: 0, y: 0.02, z: 0 }, angle: 0 }
+const _skidEvent = new CustomEvent('car:skid', { detail: _skidDetail })
+
 export class Car {
   constructor(scene, physics, slotIndex, isLocal = false) {
     this.scene     = scene;
@@ -220,6 +223,7 @@ export class Car {
   get rotation() { return this._body.rotation(); }
   get velocity() { return this._body.linvel(); }
   get speed()    { const v = this.velocity; return Math.hypot(v.x, v.y, v.z); }
+  get boostCooldown() { return this._boostCooldown }
 
   spawnAt(pos, angle = 0, shieldTime = 0) {
     this._body.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
@@ -313,11 +317,12 @@ export class Car {
     if (this._grounded && input && (Math.abs(input.steerAxis) > 0.7 || justLanded)) {
       const back = _tmpV2.set(0, 0, 1).applyQuaternion(_tmpQ)
       const right = _tmpV3.set(1, 0, 0).applyQuaternion(_tmpQ)
-      window.dispatchEvent(new CustomEvent('car:skid', { detail: {
-        left:  { x: pos.x - right.x * 0.7 + back.x * 0.7, y: 0.02, z: pos.z - right.z * 0.7 + back.z * 0.7 },
-        right: { x: pos.x + right.x * 0.7 + back.x * 0.7, y: 0.02, z: pos.z + right.z * 0.7 + back.z * 0.7 },
-        angle: Math.atan2(back.x, back.z)
-      }}))
+      _skidDetail.left.x = pos.x - right.x * 0.7 + back.x * 0.7
+      _skidDetail.left.z = pos.z - right.z * 0.7 + back.z * 0.7
+      _skidDetail.right.x = pos.x + right.x * 0.7 + back.x * 0.7
+      _skidDetail.right.z = pos.z + right.z * 0.7 + back.z * 0.7
+      _skidDetail.angle = Math.atan2(back.x, back.z)
+      window.dispatchEvent(_skidEvent)
     }
     this._wasGrounded = this._grounded
   }

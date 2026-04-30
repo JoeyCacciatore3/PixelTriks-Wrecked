@@ -127,9 +127,12 @@ export class LobbyUI {
 
   async _onJoinClick() {
     const code = this._el.querySelector('#code-input').value.trim().toUpperCase()
+    const joinBtn = this._el.querySelector('#btn-join')
     this._setLoading(true)
+    const origText = joinBtn.textContent
     try {
       if (code.length > 0) {
+        joinBtn.textContent = 'CONNECTING...'
         if (this._onJoin) await this._onJoin(code)
       } else {
         this._showError('ENTER A ROOM CODE')
@@ -137,6 +140,7 @@ export class LobbyUI {
     } catch (err) {
       this._showError(err.message || String(err))
     } finally {
+      joinBtn.textContent = origText
       this._setLoading(false)
     }
   }

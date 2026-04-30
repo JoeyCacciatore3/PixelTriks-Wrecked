@@ -59,14 +59,6 @@
       white-space: pre-wrap; word-break: break-word;
     }
 
-    /* Move Vibe Jam widget from bottom-right to top-center */
-    body > a[href*="vibej"][style*="fixed"] {
-      bottom: auto !important;
-      right: auto !important;
-      top: 8px !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-    }
   </style>
 </head>
 <body>
@@ -77,14 +69,6 @@
     <pre id="error-message"></pre>
   </div>
 
-  <script>
-    new MutationObserver((_, obs) => {
-      const w = document.querySelector('a[href*="vibej"]')
-      if (!w) return
-      obs.disconnect()
-      w.style.cssText += ';bottom:auto!important;right:auto!important;top:8px!important;left:50%!important;transform:translateX(-50%)!important;'
-    }).observe(document.body, { childList: true })
-  </script>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

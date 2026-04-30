@@ -27,6 +27,8 @@ export class Minimap {
 
   update(derby) {
     if (!this._ctx || !derby) return
+    this._elapsed = (this._elapsed || 0) + 1
+    if (this._elapsed % 6 !== 0) return
     const ctx = this._ctx
     const player = derby.localCar
     const cx = MAP_SIZE / 2, cy = MAP_SIZE / 2

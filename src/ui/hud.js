@@ -61,7 +61,11 @@ export class DerbyHUD {
       if (isMobile && !car.isHuman) continue
       const bar = this._ensureBar(car)
       const pct = (car.health / MAX_HEALTH) * 100
-      bar.fill.style.width = pct.toFixed(1) + '%'
+      const pctStr = pct.toFixed(1) + '%'
+      if (bar._lastPct !== pctStr) {
+        bar.fill.style.width = pctStr
+        bar._lastPct = pctStr
+      }
       if (car.eliminated) bar.wrap.classList.add('dead')
     }
 

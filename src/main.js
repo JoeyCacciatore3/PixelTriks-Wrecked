@@ -36,6 +36,12 @@ if (isPortalUser) {
 }
 
 async function boot() {
+  const loader = document.createElement('div')
+  loader.id = 'boot-loader'
+  loader.textContent = 'LOADING...'
+  loader.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;color:#eab308;font:bold clamp(18px,4vw,32px) ui-monospace,monospace;background:#1a1a2e;z-index:99'
+  document.getElementById('app').appendChild(loader)
+
   const engine = new Engine(document.getElementById('app'));
   engine.addGroundMesh({ size: 500 });
   engine.render();
@@ -66,6 +72,7 @@ async function boot() {
   const killfeed = new KillFeed()
   hud.hide()
   minimap.hide()
+  loader.remove()
 
   // ── State transitions ──
 
@@ -240,6 +247,10 @@ async function boot() {
         audio.updateEngine(derby.localCar.speed)
         audio.updateLowHealth(derby.localCar.health, MAX_HEALTH)
         effects.updateSpeedLines(derby.localCar.speed)
+        const boostBtn = input._actionEls?.jumpBtn
+        if (boostBtn) {
+          boostBtn.style.opacity = derby.localCar.boostCooldown > 0 ? '0.3' : '0.7'
+        }
       }
     } else if (derby.state === DerbyState.COUNTDOWN) {
       derby.update(dt, null);

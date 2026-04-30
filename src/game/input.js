@@ -36,6 +36,7 @@ export class Input {
     const btnWrap = document.createElement('div')
     btnWrap.id = 'action-buttons'
     btnWrap.style.cssText = 'position:fixed;right:calc(16px + env(safe-area-inset-right, 0px));bottom:20px;z-index:6;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
+    btnWrap.addEventListener('contextmenu', e => e.preventDefault())
     document.body.appendChild(btnWrap)
 
     const jumpBtn = this._makeTouchBtn('BOOST', 72, '#44ddff')
@@ -53,7 +54,10 @@ export class Input {
 
   _buildTouchUI() {
     const canvas = document.querySelector('canvas')
-    if (canvas) canvas.style.touchAction = 'none'
+    if (canvas) {
+      canvas.style.touchAction = 'none'
+      canvas.addEventListener('contextmenu', e => e.preventDefault())
+    }
 
     const container = document.createElement('div')
     container.id = 'touch-controls'
@@ -63,6 +67,7 @@ export class Input {
     // Joystick zone (left half)
     const joyZone = document.createElement('div')
     joyZone.style.cssText = 'position:absolute;left:0;top:0;width:50%;height:100%;pointer-events:auto;touch-action:none;padding-left:env(safe-area-inset-left, 0);'
+    joyZone.addEventListener('contextmenu', e => e.preventDefault())
     container.appendChild(joyZone)
 
     // Joystick visuals (hidden until touch)

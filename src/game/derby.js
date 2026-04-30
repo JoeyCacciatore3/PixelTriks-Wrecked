@@ -198,7 +198,7 @@ export class DerbyGame {
     const angle = Math.random() * Math.PI * 2
     const spawnX = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 40)
     const spawnZ = (Math.random() > 0.5 ? 1 : -1) * (30 + Math.random() * 50)
-    car.spawnAt({ x: spawnX, y: 0.82, z: spawnZ }, angle)
+    car.spawnAt({ x: spawnX, y: 0.82, z: spawnZ }, angle, 1.5)
   }
 
   _countAliveAI() {
@@ -213,6 +213,10 @@ export class DerbyGame {
   _startPlaying() {
     this._elapsed = 0
     this._aiSpawnTimer = AI_SPAWN_INTERVAL
+    for (const slot of this._humanSlots) {
+      const car = this.cars[slot]
+      if (car && !car.eliminated) car._spawnShield = 2
+    }
     this._initPickups()
     this._setState(DerbyState.PLAYING)
     window.dispatchEvent(new CustomEvent('derby:start'))

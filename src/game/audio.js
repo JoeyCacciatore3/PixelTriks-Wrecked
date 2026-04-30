@@ -31,6 +31,12 @@ export class AudioBus {
     window.addEventListener('pointerdown', unlock, { passive: true });
     window.addEventListener('keydown', unlock);
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.ctx?.state === 'suspended') {
+        this.ctx.resume()
+      }
+    })
+
     this._wireEvents();
   }
 
@@ -115,12 +121,16 @@ export class AudioBus {
   }
 }
 
+const _noiseCache = {}
 function noise(ctx, sec) {
-  const n = Math.floor(ctx.sampleRate * sec);
-  const b = ctx.createBuffer(1, n, ctx.sampleRate);
-  const d = b.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
-  return b;
+  const key = sec.toFixed(3)
+  if (_noiseCache[key]) return _noiseCache[key]
+  const n = Math.floor(ctx.sampleRate * sec)
+  const b = ctx.createBuffer(1, n, ctx.sampleRate)
+  const d = b.getChannelData(0)
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1
+  _noiseCache[key] = b
+  return b
 }
 
 // ── Boost (whoosh) ──
