@@ -50,6 +50,10 @@ export function barrelTexture() {
   return load('textures/barrel.png', { nearest: true })
 }
 
+export function heartTexture() {
+  return load('textures/heart.png')
+}
+
 const CAR_TEXTURE_MAP = {
   '#ef4444': 'textures/car_body_red.png',
   '#22c55e': 'textures/car_body_green.png',

@@ -39,6 +39,35 @@ export class RoomManager {
     throw new Error('All public slots full')
   }
 
+  async checkPublicAvailable() {
+    const CHECK_TIMEOUT = 2000
+    const tryOne = async (i) => {
+      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
+      const peer = new Peer()
+      try {
+        await new Promise((resolve, reject) => {
+          peer.on('open', resolve)
+          peer.on('error', reject)
+          setTimeout(() => reject(new Error('timeout')), CHECK_TIMEOUT)
+        })
+        const conn = peer.connect(hostId)
+        const ok = await new Promise((resolve) => {
+          conn.on('open', () => resolve(true))
+          conn.on('error', () => resolve(false))
+          setTimeout(() => resolve(false), CHECK_TIMEOUT)
+        })
+        if (ok) conn.close()
+        return ok
+      } finally {
+        peer.destroy()
+      }
+    }
+    const results = await Promise.allSettled(
+      Array.from({ length: PUBLIC_POOL_SIZE }, (_, i) => tryOne(i + 1))
+    )
+    return results.some(r => r.status === 'fulfilled' && r.value === true)
+  }
+
   async findAndJoinPublic() {
     let found = false
     const peers = []

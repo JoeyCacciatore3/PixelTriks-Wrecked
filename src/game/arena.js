@@ -37,6 +37,7 @@ export class Arena {
     this._portalInner = null
     this._portalUsed = false
     this._exitPortals = []
+    this._portalTime = 0
     this._exitPortalUsed = [false, false, false, false]
 
     this._buildFloor();
@@ -51,6 +52,7 @@ export class Arena {
     this._buildPortal();
     this._buildRampFills();
     this._buildCornerHalfPipes();
+    this._buildBoostStrip();
   }
 
   // Convex perimeter cage — ultimate backstop behind the half-pipe wedges.
@@ -213,7 +215,7 @@ export class Arena {
 
   _buildDeathRamps() {
     const rampTex = rampTexture(true)
-    const rampWidth = 12
+    const rampWidth = 13.8
     const rampLen = 30
     rampTex.repeat.set(rampWidth / 5, rampLen / 5)
     rampTex.needsUpdate = true
@@ -310,7 +312,8 @@ export class Arena {
 
   _buildFloorRamps() {
     const rampTex = rampTexture(true);
-    rampTex.repeat.set(8 / 5, 22 / 5);
+    const f2RampW = 9.2
+    rampTex.repeat.set(f2RampW / 5, 22 / 5);
     rampTex.needsUpdate = true;
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTex, roughness: 0.6, metalness: 0.1, color: 0xffffff });
 
@@ -332,7 +335,7 @@ export class Arena {
     const floorRailMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
 
     for (const r of accessRamps) {
-      const rampGeom = new THREE.BoxGeometry(8, 0.3, rampLen);
+      const rampGeom = new THREE.BoxGeometry(f2RampW, 0.3, rampLen);
       const mesh = new THREE.Mesh(rampGeom, rampMat);
 
       const rampGroup = new THREE.Group();
@@ -344,7 +347,7 @@ export class Arena {
       for (const side of [-1, 1]) {
         const railGeom = new THREE.BoxGeometry(0.2, 0.5, rampLen);
         const rail = new THREE.Mesh(railGeom, floorRailMat);
-        rail.position.set(side * 4.1, 0.25, 0);
+        rail.position.set(side * (f2RampW / 2 + 0.1), 0.25, 0);
         rail.rotation.x = tilt;
         rampGroup.add(rail);
       }
@@ -356,7 +359,7 @@ export class Arena {
         .setRotation(makeQuaternion(r.rotY, tilt));
       const rampBody = this.physics.world.createRigidBody(rampBodyDesc);
       this.physics.world.createCollider(
-        this.physics.RAPIER.ColliderDesc.cuboid(4, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
+        this.physics.RAPIER.ColliderDesc.cuboid(f2RampW / 2, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
         rampBody
       );
     }
@@ -402,7 +405,8 @@ export class Arena {
 
   _buildThirdFloorRamps() {
     const rampTex = rampTexture(true)
-    rampTex.repeat.set(6 / 5, 24 / 5)
+    const f3RampW = 6.9
+    rampTex.repeat.set(f3RampW / 5, 24 / 5)
     rampTex.needsUpdate = true
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTex, roughness: 0.6, metalness: 0.1, color: 0xffffff })
 
@@ -422,7 +426,7 @@ export class Arena {
     const f3RailMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
 
     for (const r of ramps) {
-      const rampGeom = new THREE.BoxGeometry(6, 0.3, rampLen)
+      const rampGeom = new THREE.BoxGeometry(f3RampW, 0.3, rampLen)
       const mesh = new THREE.Mesh(rampGeom, rampMat)
 
       const rampGroup = new THREE.Group()
@@ -434,7 +438,7 @@ export class Arena {
       for (const side of [-1, 1]) {
         const railGeom = new THREE.BoxGeometry(0.2, 0.5, rampLen)
         const rail = new THREE.Mesh(railGeom, f3RailMat)
-        rail.position.set(side * 3.1, 0.25, 0)
+        rail.position.set(side * (f3RampW / 2 + 0.1), 0.25, 0)
         rail.rotation.x = tilt
         rampGroup.add(rail)
       }
@@ -446,7 +450,7 @@ export class Arena {
         .setRotation(makeQuaternion(r.rotY, tilt))
       const rampBody = this.physics.world.createRigidBody(rampBodyDesc)
       this.physics.world.createCollider(
-        this.physics.RAPIER.ColliderDesc.cuboid(3, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
+        this.physics.RAPIER.ColliderDesc.cuboid(f3RampW / 2, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
         rampBody
       )
     }
@@ -513,15 +517,26 @@ export class Arena {
     ]
 
     const ringGeom = new THREE.TorusGeometry(2.5, 0.18, 16, 32)
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x22c55e })
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0x00ff66, emissive: 0x00ff66, emissiveIntensity: 3, toneMapped: false })
     const innerGeom = new THREE.TorusGeometry(1.8, 0.06, 12, 32)
-    const innerMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.5 })
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0x66ffaa, transparent: true, opacity: 0.6 })
+
+    const beamGeom = new THREE.CylinderGeometry(2.8, 3.5, 40, 16, 1, true)
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0x44ff88, transparent: true, opacity: 0.07,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+    })
+    const beamCoreGeom = new THREE.CylinderGeometry(0.8, 1.5, 40, 8, 1, true)
+    const beamCoreMat = new THREE.MeshBasicMaterial({
+      color: 0xaaffcc, transparent: true, opacity: 0.12,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+    })
 
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 64
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#22c55e'
+    ctx.fillStyle = '#00ff66'
     ctx.font = 'bold 32px monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -543,19 +558,32 @@ export class Arena {
       inner.position.set(wx, topY, wz)
       this.scene.add(inner)
 
-      const glow = new THREE.PointLight(0x22c55e, 3, 20)
+      const glow = new THREE.PointLight(0x44ff88, 6, 30)
       glow.position.set(wx, topY, wz)
       this.scene.add(glow)
+
+      const beam = new THREE.Mesh(beamGeom, beamMat)
+      beam.position.set(wx, topY + 20, wz)
+      this.scene.add(beam)
+
+      const beamCore = new THREE.Mesh(beamCoreGeom, beamCoreMat)
+      beamCore.position.set(wx, topY + 20, wz)
+      this.scene.add(beamCore)
+
+      const topGlow = new THREE.PointLight(0x44ff88, 4, 25)
+      topGlow.position.set(wx, topY + 35, wz)
+      this.scene.add(topGlow)
 
       const label = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.9), labelMat)
       label.position.set(wx, topY + 3.5, wz)
       this.scene.add(label)
 
-      this._exitPortals.push({ ring, inner, center: { x: wx, y: topY, z: wz } })
+      this._exitPortals.push({ ring, inner, beam, beamCore, center: { x: wx, y: topY, z: wz } })
     }
   }
 
   update(dt, allCars) {
+    this._portalTime += dt
     if (this._portalRing) {
       this._portalRing.rotation.y += dt * 0.5
       this._portalRing.rotation.z += dt * 0.3
@@ -568,9 +596,20 @@ export class Arena {
       ep.ring.rotation.z += dt * 0.35
       ep.inner.rotation.y -= dt * 0.8
       ep.inner.rotation.x += dt * 0.45
+      if (ep.beam) {
+        const pulse = 0.06 + Math.sin(this._portalTime * 1.5) * 0.03
+        ep.beam.material.opacity = pulse
+        ep.beamCore.material.opacity = pulse * 2
+        ep.beam.rotation.y += dt * 0.15
+      }
     }
 
     if (!allCars) return
+
+    for (const car of allCars) {
+      if (!car || car.eliminated) continue
+      if (this.isOnBoostStrip(car.position)) car.triggerStripBoost()
+    }
 
     if (this._portalCenter && !this._portalUsed) {
       for (const car of allCars) {
@@ -581,8 +620,18 @@ export class Arena {
         const dz = p.z - this._portalCenter.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 3) {
           this._portalUsed = true
-          const returnUrl = window.__portalRef || 'https://vibej.am/portal/2026'
-          window.open(returnUrl, '_blank', 'noopener')
+          const baseUrl = window.__portalRef || 'https://vibej.am/portal/2026'
+          const url = new URL(baseUrl.startsWith('http') ? baseUrl : 'https://' + baseUrl)
+          const incoming = new URLSearchParams(window.location.search)
+          for (const [k, v] of incoming) {
+            if (k !== 'ref' && k !== 'portal') url.searchParams.set(k, v)
+          }
+          url.searchParams.set('portal', 'true')
+          url.searchParams.set('ref', window.location.origin)
+          url.searchParams.set('color', car.color)
+          url.searchParams.set('speed', String(Math.round(car.speed)))
+          url.searchParams.set('hp', String(Math.round(car.health / 5)))
+          window.location.href = url.toString()
           break
         }
       }
@@ -599,8 +648,13 @@ export class Arena {
         const dz = p.z - c.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 4) {
           this._exitPortalUsed[i] = true
-          const exitUrl = 'https://vibej.am/portal/2026?ref=' + encodeURIComponent(window.location.origin)
-          window.open(exitUrl, '_blank', 'noopener')
+          const url = new URL('https://vibej.am/portal/2026')
+          url.searchParams.set('ref', window.location.origin)
+          url.searchParams.set('portal', 'true')
+          url.searchParams.set('color', car.color)
+          url.searchParams.set('speed', String(Math.round(car.speed)))
+          url.searchParams.set('hp', String(Math.round(car.health / 5)))
+          window.location.href = url.toString()
           break
         }
       }
@@ -630,33 +684,48 @@ export class Arena {
       this.scene.add(tip);
     }
 
-    // Scatter stumps across the larger ground floor (InstancedMesh — 2 draw calls instead of 32)
-    const stumpMat = new THREE.MeshStandardMaterial({ color: 0x2a2a38, roughness: 0.9, metalness: 0.3 });
-    const stumps = [
+    // Scatter jump mounds across the ground floor (drivable ramps)
+    const moundPositions = [
       [-50, -50], [50, -50], [-50, 50], [50, 50],
       [-80, -80], [80, -80], [-80, 80], [80, 80],
       [-30, 0], [30, 0], [0, -70], [0, 70],
       [-70, -25], [70, -25], [-70, 25], [70, 25]
-    ];
-    const stumpGeom = new THREE.CylinderGeometry(0.6, 0.7, 1.4, 8)
-    const stumpMesh = new THREE.InstancedMesh(stumpGeom, stumpMat, stumps.length)
-    stumpMesh.castShadow = true
-    const ringGeom = new THREE.TorusGeometry(0.6, 0.06, 6, 16)
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4400 })
-    const ringMesh = new THREE.InstancedMesh(ringGeom, ringMat, stumps.length)
+    ]
+    const moundRadius = 2.0
+    const moundHeight = 0.7
+    const moundSegs = 12
+    const moundMat = new THREE.MeshStandardMaterial({ color: 0x3a3a48, roughness: 0.85, metalness: 0.2 })
+    const moundGeom = new THREE.SphereGeometry(moundRadius, moundSegs, moundSegs, 0, Math.PI * 2, 0, Math.PI / 2)
+    moundGeom.scale(1, moundHeight / moundRadius, 1)
+    const moundMesh = new THREE.InstancedMesh(moundGeom, moundMat, moundPositions.length)
+    moundMesh.castShadow = true
+    moundMesh.receiveShadow = true
+    const stripeMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
+    const stripeGeom = new THREE.TorusGeometry(moundRadius * 0.7, 0.05, 6, 16)
+    const stripeMesh = new THREE.InstancedMesh(stripeGeom, stripeMat, moundPositions.length)
     const _m4 = new THREE.Matrix4()
     const _rotQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2)
-    for (let i = 0; i < stumps.length; i++) {
-      const [x, z] = stumps[i]
-      _m4.makeTranslation(x, 0.7, z)
-      stumpMesh.setMatrixAt(i, _m4)
-      _m4.makeRotationFromQuaternion(_rotQ)
-      _m4.setPosition(x, 1.44, z)
-      ringMesh.setMatrixAt(i, _m4)
-      this.physics.addStaticBox({ cx: x, cy: 0.7, cz: z, hw: 0.65, hh: 0.7, hd: 0.65, friction: 0.4, restitution: 0.5 })
+    const hullPts = new Float32Array(moundSegs * 3 + 3)
+    for (let i = 0; i < moundSegs; i++) {
+      const a = (i / moundSegs) * Math.PI * 2
+      hullPts[i * 3] = Math.cos(a) * moundRadius
+      hullPts[i * 3 + 1] = 0
+      hullPts[i * 3 + 2] = Math.sin(a) * moundRadius
     }
-    this.scene.add(stumpMesh)
-    this.scene.add(ringMesh)
+    hullPts[moundSegs * 3] = 0
+    hullPts[moundSegs * 3 + 1] = moundHeight
+    hullPts[moundSegs * 3 + 2] = 0
+    for (let i = 0; i < moundPositions.length; i++) {
+      const [x, z] = moundPositions[i]
+      _m4.makeTranslation(x, 0, z)
+      moundMesh.setMatrixAt(i, _m4)
+      _m4.makeRotationFromQuaternion(_rotQ)
+      _m4.setPosition(x, moundHeight * 0.4, z)
+      stripeMesh.setMatrixAt(i, _m4)
+      this.physics.addStaticConvexHull({ cx: x, cy: 0, cz: z, points: hullPts, friction: 0.3, restitution: 0.2 })
+    }
+    this.scene.add(moundMesh)
+    this.scene.add(stripeMesh)
   }
 
   _buildRampFills() {
@@ -679,9 +748,9 @@ export class Arena {
       const shiftAmt = f2Horiz * 0.2
       this.physics.addStaticBox({
         cx: r.x + r.dirX * shiftAmt, cy: fillH / 2, cz: r.z + r.dirZ * shiftAmt,
-        hw: r.dirZ !== 0 ? 2.5 : f2Horiz * 0.2,
+        hw: r.dirZ !== 0 ? 2.9 : f2Horiz * 0.2,
         hh: fillH / 2,
-        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : 2.5,
+        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : 2.9,
         friction: 0.1, restitution: 0.1
       })
     }
@@ -699,7 +768,7 @@ export class Arena {
       const shiftAmt = f3Horiz * 0.2
       this.physics.addStaticBox({
         cx: r.x, cy: FLOOR2_H + fillH / 2, cz: r.z + r.dirZ * shiftAmt,
-        hw: 1.8, hh: fillH / 2, hd: f3Horiz * 0.2,
+        hw: 2.1, hh: fillH / 2, hd: f3Horiz * 0.2,
         friction: 0.1, restitution: 0.1
       })
     }
@@ -839,5 +908,111 @@ export class Arena {
       }
     }
     this.scene.add(trimInstanced)
+  }
+
+  _buildBoostStrip() {
+    const hw = ARENA_W / 2
+    const hd = ARENA_D / 2
+    const R = 36
+    const r = 12
+    const SINK = 1
+    const STRIP_W = 2.0
+    const STRIP_H = 0.08
+    const STRIP_Y = -SINK + STRIP_H / 2 + 0.02
+
+    const stripMat = new THREE.MeshStandardMaterial({
+      color: 0xeab308, emissive: 0xeab308, emissiveIntensity: 1.5,
+      toneMapped: false, roughness: 0.3, metalness: 0.6
+    })
+
+    const floorPhi = Math.acos(1 - SINK / r)
+    const wallBaseOffset = r * (1 - Math.sin(floorPhi))
+
+    const segments = [
+      { axis: 'x', wallPos: -hd, sign: 1, from: -(hw - R), to: hw - R },
+      { axis: 'x', wallPos: hd, sign: -1, from: -(hw - R), to: hw - R },
+      { axis: 'z', wallPos: -hw, sign: 1, from: -(hd - R), to: hd - R },
+      { axis: 'z', wallPos: hw, sign: -1, from: -(hd - R), to: hd - R },
+    ]
+
+    for (const seg of segments) {
+      const len = seg.to - seg.from
+      const stripPos = seg.wallPos + seg.sign * wallBaseOffset
+      if (seg.axis === 'x') {
+        const geom = new THREE.BoxGeometry(len, STRIP_H, STRIP_W)
+        const mesh = new THREE.Mesh(geom, stripMat)
+        mesh.position.set((seg.from + seg.to) / 2, STRIP_Y, stripPos)
+        this.scene.add(mesh)
+      } else {
+        const geom = new THREE.BoxGeometry(STRIP_W, STRIP_H, len)
+        const mesh = new THREE.Mesh(geom, stripMat)
+        mesh.position.set(stripPos, STRIP_Y, (seg.from + seg.to) / 2)
+        this.scene.add(mesh)
+      }
+    }
+
+    const cornerArcRadius = R - r + wallBaseOffset
+    const corners = [
+      { cx: -hw + R, cz: -hd + R, thetaStart: Math.PI },
+      { cx:  hw - R, cz: -hd + R, thetaStart: Math.PI * 0.5 },
+      { cx:  hw - R, cz:  hd - R, thetaStart: 0 },
+      { cx: -hw + R, cz:  hd - R, thetaStart: Math.PI * 1.5 },
+    ]
+    const ARC_SEGS = 16
+
+    for (const c of corners) {
+      const pts = []
+      for (let i = 0; i <= ARC_SEGS; i++) {
+        const theta = c.thetaStart + (i / ARC_SEGS) * (Math.PI / 2)
+        pts.push(new THREE.Vector3(
+          c.cx + cornerArcRadius * Math.sin(theta),
+          STRIP_Y,
+          c.cz + cornerArcRadius * Math.cos(theta)
+        ))
+      }
+      const curve = new THREE.CatmullRomCurve3(pts)
+      const extGeom = new THREE.TubeGeometry(curve, ARC_SEGS, STRIP_W / 2, 4, false)
+      const mesh = new THREE.Mesh(extGeom, stripMat)
+      this.scene.add(mesh)
+    }
+
+    this._boostStripParams = { hw, hd, R, r, wallBaseOffset, cornerArcRadius }
+  }
+
+  isOnBoostStrip(pos) {
+    if (!this._boostStripParams) return false
+    if (pos.y > 2) return false
+
+    const { hw, hd, R, wallBaseOffset, cornerArcRadius } = this._boostStripParams
+    const HALF_W = 1.5
+    const x = pos.x, z = pos.z
+
+    const stripN = -hd + wallBaseOffset
+    const stripS = hd - wallBaseOffset
+    const stripW = -hw + wallBaseOffset
+    const stripE = hw - wallBaseOffset
+
+    if (Math.abs(z - stripN) < HALF_W && x > -(hw - R) && x < (hw - R)) return true
+    if (Math.abs(z - stripS) < HALF_W && x > -(hw - R) && x < (hw - R)) return true
+    if (Math.abs(x - stripW) < HALF_W && z > -(hd - R) && z < (hd - R)) return true
+    if (Math.abs(x - stripE) < HALF_W && z > -(hd - R) && z < (hd - R)) return true
+
+    const corners = [
+      { cx: -hw + R, cz: -hd + R, thetaStart: Math.PI },
+      { cx:  hw - R, cz: -hd + R, thetaStart: Math.PI * 0.5 },
+      { cx:  hw - R, cz:  hd - R, thetaStart: 0 },
+      { cx: -hw + R, cz:  hd - R, thetaStart: Math.PI * 1.5 },
+    ]
+    for (const c of corners) {
+      const dx = x - c.cx, dz = z - c.cz
+      const dist = Math.hypot(dx, dz)
+      if (Math.abs(dist - cornerArcRadius) < HALF_W) {
+        let a = Math.atan2(dx, dz) - c.thetaStart
+        while (a < 0) a += Math.PI * 2
+        while (a > Math.PI * 2) a -= Math.PI * 2
+        if (a <= Math.PI / 2 + 0.05) return true
+      }
+    }
+    return false
   }
 }

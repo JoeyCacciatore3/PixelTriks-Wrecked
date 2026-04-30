@@ -42,7 +42,7 @@ export class Input {
 
     // Joystick zone (left half)
     const joyZone = document.createElement('div')
-    joyZone.style.cssText = 'position:absolute;left:0;top:0;width:50%;height:100%;pointer-events:auto;touch-action:none;'
+    joyZone.style.cssText = 'position:absolute;left:0;top:0;width:50%;height:100%;pointer-events:auto;touch-action:none;padding-left:env(safe-area-inset-left, 0);'
     container.appendChild(joyZone)
 
     // Joystick visuals (hidden until touch)
@@ -56,7 +56,7 @@ export class Input {
 
     // Buttons (right side) — two large buttons, stacked with FIRE on bottom (thumb reach)
     const btnWrap = document.createElement('div')
-    btnWrap.style.cssText = 'position:absolute;right:16px;bottom:20px;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
+    btnWrap.style.cssText = 'position:absolute;right:calc(16px + env(safe-area-inset-right, 0px));bottom:20px;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
     container.appendChild(btnWrap)
 
     const jumpBtn = this._makeTouchBtn('BOOST', 72, '#44ddff')
@@ -119,9 +119,13 @@ export class Input {
     this._wireButton(jumpBtn, 'jump')
 
     // Orientation overlay
+    let orientDismissed = false
     const orientOverlay = document.createElement('div')
     orientOverlay.id = 'orient-overlay'
     document.body.appendChild(orientOverlay)
+
+    const isIPhone = /iPhone/i.test(navigator.userAgent)
+    const canFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)
 
     const orientStyle = document.createElement('style')
     orientStyle.textContent = `
@@ -130,6 +134,7 @@ export class Input {
         background:linear-gradient(135deg, rgba(8,0,14,0.97) 0%, rgba(30,10,50,0.97) 100%);
         display:none;align-items:center;justify-content:center;flex-direction:column;gap:20px;
         font-family:ui-monospace,'SF Mono',monospace;text-align:center;pointer-events:auto;
+        padding:env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
       }
       .orient-icon {
         width:80px;height:48px;border:3px solid #eab308;border-radius:8px;position:relative;
@@ -154,6 +159,10 @@ export class Input {
         letter-spacing:0.2em;cursor:pointer;transition:border-color 0.2s,color 0.2s;
       }
       .orient-dismiss:active { border-color:#eab308;color:#eab308; }
+      #touch-controls, .touch-fs-btn {
+        padding-left:env(safe-area-inset-left, 0);
+        padding-right:env(safe-area-inset-right, 0);
+      }
     `
     document.head.appendChild(orientStyle)
 
@@ -165,6 +174,7 @@ export class Input {
     `
 
     const checkOrientation = () => {
+      if (orientDismissed) return
       if (isPortrait()) {
         orientOverlay.style.display = 'flex'
       } else {
@@ -174,23 +184,58 @@ export class Input {
     checkOrientation()
     window.addEventListener('resize', checkOrientation)
     orientOverlay.querySelector('.orient-dismiss').addEventListener('pointerdown', () => {
+      orientDismissed = true
       orientOverlay.style.display = 'none'
     })
 
-    // Fullscreen toggle
+    // Fullscreen + orientation lock
     const fsBtn = document.createElement('div')
-    fsBtn.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:7;padding:6px 14px;border-radius:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;letter-spacing:0.15em;color:rgba(255,255,255,0.5);font-family:ui-monospace,monospace;cursor:pointer;pointer-events:auto;'
-    fsBtn.textContent = 'FULLSCREEN'
+    fsBtn.className = 'touch-fs-btn'
+    fsBtn.style.cssText = 'position:fixed;top:8px;right:8px;z-index:7;padding:6px 14px;border-radius:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;letter-spacing:0.15em;color:rgba(255,255,255,0.5);font-family:ui-monospace,monospace;cursor:pointer;pointer-events:auto;'
+
+    const updateFsLabel = () => {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement)
+      fsBtn.textContent = isFs ? 'EXIT FS' : 'FULLSCREEN'
+    }
+
+    if (isIPhone && !canFullscreen) {
+      fsBtn.style.display = 'none'
+    }
+
+    updateFsLabel()
     document.body.appendChild(fsBtn)
+
+    const enterFullscreen = async () => {
+      const el = document.documentElement
+      const reqFs = el.requestFullscreen || el.webkitRequestFullscreen
+      if (!reqFs) return
+      try {
+        await reqFs.call(el)
+        if (screen.orientation && screen.orientation.lock) {
+          try { await screen.orientation.lock('landscape') } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    const exitFullscreen = async () => {
+      const exitFs = document.exitFullscreen || document.webkitExitFullscreen
+      if (!exitFs) return
+      if (screen.orientation && screen.orientation.unlock) {
+        try { screen.orientation.unlock() } catch (_) {}
+      }
+      try { await exitFs.call(document) } catch (_) {}
+    }
+
     fsBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault()
-      const el = document.documentElement
-      if (!document.fullscreenElement) {
-        (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el)
-      } else {
-        (document.exitFullscreen || document.webkitExitFullscreen).call(document)
-      }
+      e.stopPropagation()
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement)
+      if (!isFs) enterFullscreen()
+      else exitFullscreen()
     })
+
+    document.addEventListener('fullscreenchange', updateFsLabel)
+    document.addEventListener('webkitfullscreenchange', updateFsLabel)
 
     this._touchEls = { container, joyZone, joyRing, joyDot, btnWrap, fireBtn, jumpBtn, orientOverlay, fsBtn }
   }

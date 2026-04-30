@@ -112,7 +112,7 @@ export class DerbyHUD {
       #derby-hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; font-family: ui-monospace, monospace; }
 
       #hud-health-bars {
-        position: absolute; top: 12px; left: 12px;
+        position: absolute; top: 12px; left: calc(12px + env(safe-area-inset-left, 0px));
         display: flex; flex-direction: column; gap: 4px;
         max-height: 40vh; overflow: hidden;
       }

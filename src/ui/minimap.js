@@ -16,7 +16,7 @@ export class Minimap {
     this._canvas.width = MAP_SIZE
     this._canvas.height = MAP_SIZE
     this._canvas.style.cssText = `
-      position:fixed;top:12px;right:12px;z-index:6;
+      position:fixed;top:12px;right:calc(12px + env(safe-area-inset-right, 0px));z-index:6;
       width:${MAP_SIZE}px;height:${MAP_SIZE}px;
       border:1px solid rgba(255,255,255,0.18);
       background:rgba(0,0,0,0.55);pointer-events:none;

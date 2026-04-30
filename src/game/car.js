@@ -74,9 +74,21 @@ export class Car {
   get isHuman() { return this._isHuman; }
   set isHuman(val) {
     this._isHuman = val;
+    const isAI = !val
+    const tex = carBodyTexture(this.color, isAI)
     if (this._bodyMat) {
-      this._bodyMat.map = carBodyTexture(this.color, !val);
-      this._bodyMat.needsUpdate = true;
+      this._bodyMat.map = tex
+      this._bodyMat.needsUpdate = true
+    }
+    if (this._cabinMat) {
+      this._cabinMat.map = isAI ? tex : null
+      this._cabinMat.color.set(isAI ? 0xffffff : 0x334155)
+      this._cabinMat.needsUpdate = true
+    }
+    if (this._bumperMat) {
+      this._bumperMat.map = isAI ? tex : null
+      this._bumperMat.color.set(isAI ? 0xffffff : 0x475569)
+      this._bumperMat.needsUpdate = true
     }
   }
 
@@ -98,8 +110,12 @@ export class Car {
 
     // Cabin
     const cabinGeom = new THREE.BoxGeometry(0.96, 0.46, 1.05);
-    const cabinMat  = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.1 });
-    const cabin = new THREE.Mesh(cabinGeom, cabinMat);
+    const aiTex = !this._isHuman ? carBodyTexture(this.color, true) : null
+    this._cabinMat = new THREE.MeshStandardMaterial({
+      color: aiTex ? 0xffffff : 0x334155, roughness: 0.5, metalness: 0.1,
+      map: aiTex || null
+    });
+    const cabin = new THREE.Mesh(cabinGeom, this._cabinMat);
     cabin.position.set(0, 0.57, -0.12);
     cabin.castShadow = true;
     this._group.add(cabin);
@@ -107,8 +123,9 @@ export class Car {
     // Front + rear bumpers
     const bumperGeom = new THREE.BoxGeometry(1.42, 0.38, 0.18);
     const bumperMat  = new THREE.MeshStandardMaterial({
-      color: 0x475569, roughness: 0.7, metalness: 0.6,
-      emissive: new THREE.Color(this.color), emissiveIntensity: 0
+      color: aiTex ? 0xffffff : 0x475569, roughness: 0.7, metalness: 0.6,
+      emissive: new THREE.Color(this.color), emissiveIntensity: 0,
+      map: aiTex || null
     });
     const frontBumper = new THREE.Mesh(bumperGeom, bumperMat);
     frontBumper.position.set(0, -0.04, -1.17);
@@ -177,10 +194,11 @@ export class Car {
     const numGeom = new THREE.PlaneGeometry(0.45, 0.45);
     const numMat  = new THREE.MeshBasicMaterial({ map: numTex, transparent: true, depthWrite: false });
     const numMesh = new THREE.Mesh(numGeom, numMat);
-    numMesh.position.set(0, 0.86, 0);
+    numMesh.position.set(0, 1.08, 0);
     this.scene.add(numMesh);
     this._numMesh = numMesh;
 
+    this._group.scale.set(1.25, 1.25, 1.25);
     this.scene.add(this._group);
   }
 
@@ -421,6 +439,12 @@ export class Car {
   }
 
   // Damage from collision — called by derby.js
+  triggerStripBoost() {
+    if (this._boostTimer > 0) return
+    this._boostTimer = BOOST_DURATION
+    window.dispatchEvent(new CustomEvent('car:boost', { detail: { slot: this.slot, pos: this._body.translation() } }))
+  }
+
   applyDamage(amount, attackerSlot) {
     if (this.eliminated) return
     const was = this.health

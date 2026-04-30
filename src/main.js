@@ -95,13 +95,59 @@ async function boot() {
     }
   }
 
-  // ── Play (public matchmaking — try join, fallback to host) ──
+  // ── Play (instant solo as public host) ──
 
   let _playStarted = false
 
   async function startPlay() {
     if (_playStarted || derby.state !== DerbyState.LOBBY || derby.allCars.length > 0) return
     _playStarted = true
+    stopBgScan()
+    derby.addLocalPlayer(0)
+    hud.setLocalSlot(0)
+    effects.setLocalSlot(0)
+    derby.spawnInitialAI()
+    lobby.hide()
+    hud.show()
+    derby.beginMatchCountdown()
+    try {
+      await room.createPublicRoom()
+      derby.setSyncManager(sync, true)
+    } catch (_) {}
+  }
+
+  // ── Background scan for joinable public games ──
+
+  let _bgScanTimer = null
+
+  function startBgScan() {
+    if (_bgScanTimer) return
+    async function scan() {
+      if (_playStarted || derby.state !== DerbyState.LOBBY) { stopBgScan(); return }
+      try {
+        const available = await room.checkPublicAvailable()
+        lobby.setJoinAvailable(available)
+      } catch (_) {
+        lobby.setJoinAvailable(false)
+      }
+      _bgScanTimer = setTimeout(scan, 4000)
+    }
+    scan()
+  }
+
+  function stopBgScan() {
+    if (_bgScanTimer) { clearTimeout(_bgScanTimer); _bgScanTimer = null }
+    lobby.setJoinAvailable(false)
+  }
+
+  startBgScan()
+
+  // ── Join public game ──
+
+  window.addEventListener('lobby:join_public', async () => {
+    if (_playStarted || derby.state !== DerbyState.LOBBY) return
+    _playStarted = true
+    stopBgScan()
     try {
       const joined = await room.findAndJoinPublic()
       if (joined) {
@@ -109,33 +155,10 @@ async function boot() {
         derby.setSyncManager(sync, false)
         return
       }
-      await room.createPublicRoom()
-      startAsHost()
-    } catch (err) {
-      startOffline()
-    }
-  }
-
-  function startAsHost() {
-    derby.addLocalPlayer(0)
-    hud.setLocalSlot(0)
-    effects.setLocalSlot(0)
-    derby.setSyncManager(sync, true)
-    derby.spawnInitialAI()
-    lobby.hide()
-    hud.show()
-    derby.beginMatchCountdown()
-  }
-
-  function startOffline() {
-    derby.addLocalPlayer(0)
-    hud.setLocalSlot(0)
-    effects.setLocalSlot(0)
-    derby.spawnInitialAI()
-    lobby.hide()
-    hud.show()
-    derby.beginMatchCountdown()
-  }
+    } catch (_) {}
+    _playStarted = false
+    startBgScan()
+  })
 
   window.addEventListener('lobby:play', () => startPlay());
   window.addEventListener('keydown', (e) => {
@@ -252,7 +275,7 @@ async function boot() {
   requestAnimationFrame(tick);
   window.__wy = { engine, physics, derby, room, sync, audio, effects };
 
-  if (isPortalUser) startOffline()
+  if (isPortalUser) startPlay()
 }
 
 boot().catch(showError);

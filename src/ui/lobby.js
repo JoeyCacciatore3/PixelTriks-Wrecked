@@ -7,7 +7,6 @@ import { isMobile } from '../util/detect.js';
 export class LobbyUI {
   constructor() {
     this._el      = null;
-    this._slots   = [null, null, null, null];
     this._onStart = null;
     this._onJoin  = null;
 
@@ -30,7 +29,10 @@ export class LobbyUI {
 
         <div class="lobby-solo-wrap">
           <button class="lobby-btn primary solo-btn" id="btn-play">PLAY</button>
-          <div class="play-hint">DROP-IN MULTIPLAYER · OTHERS CAN JOIN YOUR GAME</div>
+        </div>
+
+        <div class="lobby-join-wrap">
+          <button class="lobby-btn join-btn" id="btn-join-public" disabled>SEARCHING FOR GAMES...</button>
         </div>
 
         <div class="lobby-separator">── PRIVATE ROOM ──</div>
@@ -89,6 +91,9 @@ export class LobbyUI {
     this._el.querySelector('#btn-play').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('lobby:play'));
     });
+    this._el.querySelector('#btn-join-public').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('lobby:join_public'));
+    });
     const btnCreate = this._el.querySelector('#btn-create');
     if (btnCreate) btnCreate.addEventListener('click', () => this._onCreate());
     const btnJoin = this._el.querySelector('#btn-join');
@@ -98,6 +103,20 @@ export class LobbyUI {
       if (e.key === 'Enter') this._onJoinClick();
       e.stopPropagation();
     });
+  }
+
+  setJoinAvailable(available) {
+    const btn = this._el.querySelector('#btn-join-public')
+    if (!btn) return
+    if (available) {
+      btn.disabled = false
+      btn.textContent = 'JOIN GAME'
+      btn.classList.add('join-available')
+    } else {
+      btn.disabled = true
+      btn.textContent = 'SEARCHING FOR GAMES...'
+      btn.classList.remove('join-available')
+    }
   }
 
   async _onCreate() {
@@ -180,21 +199,23 @@ export class LobbyUI {
       #lobby {
         position: fixed; inset: 0; z-index: 20;
         display: flex; align-items: center; justify-content: center;
-        background: radial-gradient(ellipse at bottom, #bbf7d0 0%, #6eb5ff 100%);
+        background: url('hero.png') center/cover no-repeat, #1a1a2e;
         transition: opacity 0.4s;
         font-family: ui-monospace, 'SF Mono', monospace;
       }
       .lobby-wrap {
         text-align: center; padding: 24px 20px; max-width: 620px; width: 100%;
+        background: rgba(0, 0, 0, 0.55); border-radius: 20px;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
       }
       .lobby-logo {
         font-size: clamp(32px, 8vw, 64px); font-weight: 900; letter-spacing: 0.05em;
         margin-bottom: 12px; line-height: 1.1;
       }
-      .logo-pt { font-size: 0.4em; color: #3b82f6; text-shadow: 2px 2px 0 #fff; display: block; margin-bottom: -10px; }
+      .logo-pt { font-size: 0.4em; color: #60a5fa; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); display: block; margin-bottom: -10px; }
       .logo-wrecked { color: #ef4444; text-shadow: 4px 4px 0 #eab308, 0 0 20px rgba(239,68,68,0.5); }
       .lobby-tagline {
-        font-size: 11px; letter-spacing: 0.25em; color: #1e293b; margin-bottom: 36px;
+        font-size: 11px; letter-spacing: 0.25em; color: #e2e8f0; margin-bottom: 36px;
         font-weight: bold;
       }
       .lobby-grid {
@@ -202,29 +223,29 @@ export class LobbyUI {
         flex-wrap: wrap; margin-bottom: 20px;
       }
       .lobby-col { flex: 1; min-width: 160px; max-width: 220px; }
-      .lobby-divider { font-size: 12px; letter-spacing: 0.3em; color: #334155; font-weight: bold; }
-      .lobby-section-title { font-size: 10px; letter-spacing: 0.3em; color: #1e293b; margin-bottom: 12px; font-weight: bold; }
+      .lobby-divider { font-size: 12px; letter-spacing: 0.3em; color: #94a3b8; font-weight: bold; }
+      .lobby-section-title { font-size: 10px; letter-spacing: 0.3em; color: #e2e8f0; margin-bottom: 12px; font-weight: bold; }
       .lobby-btn {
         display: block; width: 100%; padding: 14px; margin-top: 10px;
-        background: #ffffff; border: 3px solid #1e293b; border-radius: 12px;
-        color: #1e293b; font-family: inherit; font-size: 12px; letter-spacing: 0.15em; font-weight: bold;
-        cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 #1e293b;
+        background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+        color: #e2e8f0; font-family: inherit; font-size: 12px; letter-spacing: 0.15em; font-weight: bold;
+        cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
       }
-      .lobby-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #1e293b; }
-      .lobby-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1e293b; }
-      .lobby-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 #1e293b; }
-      .lobby-btn.primary { background: #eab308; }
+      .lobby-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); }
+      .lobby-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
+      .lobby-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); }
+      .lobby-btn.primary { background: #eab308; color: #1a1a2e; }
       .lobby-input {
         width: 100%; padding: 13px; box-sizing: border-box;
-        background: #ffffff; border: 3px solid #1e293b; border-radius: 12px;
-        color: #1e293b; font-family: inherit; font-size: 14px; letter-spacing: 0.2em; font-weight: bold;
+        background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+        color: #e2e8f0; font-family: inherit; font-size: 14px; letter-spacing: 0.2em; font-weight: bold;
         text-align: center; text-transform: uppercase; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
       }
       .lobby-input:focus { outline: none; border-color: #3b82f6; }
       .room-code-display {
-        margin-top: 12px; padding: 10px; background: #ffffff;
-        border: 3px solid #1e293b; border-radius: 12px; color: #1e293b; font-weight: bold;
-        font-size: 14px; letter-spacing: 0.2em; box-shadow: 4px 4px 0 #1e293b;
+        margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.1);
+        border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; color: #e2e8f0; font-weight: bold;
+        font-size: 14px; letter-spacing: 0.2em; box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
       }
       .lobby-error {
         margin: 12px auto; max-width: 400px; padding: 10px;
@@ -233,28 +254,36 @@ export class LobbyUI {
       }
       .slot-grid { margin-top: 24px; }
       .slots { display: flex; flex-direction: column; gap: 8px; max-width: 320px; margin: 12px auto 0; }
-      .slot-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #ffffff; border: 3px solid #1e293b; border-radius: 12px; box-shadow: 3px 3px 0 #1e293b; }
-      .slot-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #1e293b; flex-shrink: 0; }
+      .slot-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; box-shadow: 3px 3px 0 rgba(0,0,0,0.3); }
+      .slot-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
       .slot-name { flex: 1; font-size: 12px; font-weight: bold; letter-spacing: 0.1em; text-align: left; }
       .slot-status { font-size: 11px; font-weight: bold; letter-spacing: 0.15em; color: #94a3b8; }
-      .slot-status.occupied { color: #1e293b; }
+      .slot-status.occupied { color: #e2e8f0; }
       .lobby-countdown-wrap { margin-top: 20px; text-align: center; }
-      .lobby-countdown-label { font-size: 14px; font-weight: bold; letter-spacing: 0.2em; color: #1e293b; }
+      .lobby-countdown-label { font-size: 14px; font-weight: bold; letter-spacing: 0.2em; color: #e2e8f0; }
       .lobby-countdown {
         font-size: 96px; font-weight: 900; color: #ef4444; text-shadow: 4px 4px 0 #1e293b, -4px -4px 0 #ffffff;
         line-height: 1; margin: 10px 0;
         animation: pulse 1s infinite alternate;
       }
       @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
-      .lobby-countdown-sub { font-size: 12px; font-weight: bold; letter-spacing: 0.2em; color: #334155; }
+      .lobby-countdown-sub { font-size: 12px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8; }
       .lobby-solo-wrap { margin: 0 auto 4px; max-width: 280px; }
       .solo-btn { font-size: 13px !important; padding: 16px !important; margin-top: 0 !important; }
-      .play-hint { font-size: 8px; letter-spacing: 0.2em; color: #475569; margin-top: 8px; font-weight: bold; }
-      .lobby-separator { font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #334155; margin: 18px 0 16px; }
-      .lobby-controls-hint { margin-top: 24px; font-size: 10px; font-weight: bold; letter-spacing: 0.1em; color: #475569; }
+      .lobby-separator { font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8; margin: 18px 0 16px; }
+      .lobby-join-wrap { margin: 8px auto 0; max-width: 280px; }
+      .join-btn { font-size: 11px !important; padding: 12px !important; background: rgba(255,255,255,0.1) !important; }
+      .join-btn:disabled { background: rgba(255,255,255,0.05) !important; color: #64748b !important; }
+      .join-btn.join-available {
+        background: #22c55e !important; color: #fff !important; border-color: #166534 !important;
+        box-shadow: 4px 4px 0 #166534, 0 0 20px rgba(34,197,94,0.4) !important;
+        animation: join-glow 1.5s infinite alternate;
+      }
+      @keyframes join-glow { from { box-shadow: 4px 4px 0 #166534, 0 0 12px rgba(34,197,94,0.3); } to { box-shadow: 4px 4px 0 #166534, 0 0 28px rgba(34,197,94,0.6); } }
+      .lobby-controls-hint { margin-top: 24px; font-size: 10px; font-weight: bold; letter-spacing: 0.1em; color: #94a3b8; }
       .portal-btn {
         display: inline-block; margin-top: 20px;
-        font-size: 10px; font-weight: bold; letter-spacing: 0.15em; color: #334155;
+        font-size: 10px; font-weight: bold; letter-spacing: 0.15em; color: #94a3b8;
         text-decoration: none; transition: color 0.15s;
       }
       .portal-btn:hover { color: #22c55e; }

@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { Car, MAX_HEALTH, BULLET_DAMAGE } from './car.js'
 import { AIDriver } from './ai.js'
-import { SPAWN_POINTS } from './arena.js'
+import { SPAWN_POINTS, ARENA_W, ARENA_D } from './arena.js'
+import { heartTexture } from './textures.js'
 
 const _collQ = new THREE.Quaternion()
 const _collFwd = new THREE.Vector3()
@@ -21,8 +22,14 @@ const DAMAGE_SCALE    = 2.0
 const MAX_AI_ALIVE    = 8
 const AI_SPAWN_INTERVAL = 15
 const INITIAL_AI_COUNT  = 3
-const AI_DAMAGE_OUT = 0.15  // multiplier on damage AI deal to humans
-const AI_DAMAGE_IN  = 2.0   // multiplier on damage AI receive from humans
+const AI_DAMAGE_OUT = 0.15
+const AI_DAMAGE_IN  = 2.0
+
+const HEAL_AMOUNT = MAX_HEALTH * 0.25
+const PICKUP_RADIUS = 3.0
+const PICKUP_RESPAWN = 5.0
+const GROUND_PICKUP_COUNT = 2
+const FLOOR3_Y = 15.4
 
 export class DerbyGame {
   constructor(scene, physics) {
@@ -49,6 +56,8 @@ export class DerbyGame {
     this._aiTotalKilled = 0
     this.playerStats = {}
     this._lastAttacker = {}
+    this._pickups = []
+    this._pickupTime = 0
 
     this.onStateChange = null
     this.onCountdown   = null
@@ -196,6 +205,7 @@ export class DerbyGame {
   _startPlaying() {
     this._elapsed = 0
     this._aiSpawnTimer = AI_SPAWN_INTERVAL
+    this._initPickups()
     this._setState(DerbyState.PLAYING)
     window.dispatchEvent(new CustomEvent('derby:start'))
   }
@@ -250,6 +260,7 @@ export class DerbyGame {
       }
       this._checkCarCollisions()
       this._checkBulletHits()
+      this._updatePickups(dt)
 
       this._aiSpawnTimer -= dt
       if (this._aiSpawnTimer <= 0) {
@@ -266,6 +277,7 @@ export class DerbyGame {
       }
       if (!humansAlive) {
         this._winner = -1
+        this._disposePickups()
         this._setState(DerbyState.FINISHED)
         window.dispatchEvent(new CustomEvent('derby:winner', { detail: { slot: -1 } }))
       }
@@ -418,6 +430,74 @@ export class DerbyGame {
     for (const c of this.cars) {
       if (c) this._allCarsCache.push(c)
     }
+  }
+
+  _initPickups() {
+    if (this._pickups.length) return
+    const tex = heartTexture()
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
+
+    const hw = ARENA_W / 2 - 20
+    const hd = ARENA_D / 2 - 20
+    const positions = [
+      { x: 0, y: FLOOR3_Y, z: 0 },
+    ]
+    for (let i = 0; i < GROUND_PICKUP_COUNT; i++) {
+      positions.push({
+        x: (Math.random() * 2 - 1) * hw,
+        y: 1.5,
+        z: (Math.random() * 2 - 1) * hd,
+      })
+    }
+
+    for (const pos of positions) {
+      const sprite = new THREE.Sprite(mat.clone())
+      sprite.scale.set(3, 3, 1)
+      sprite.position.set(pos.x, pos.y, pos.z)
+      this.scene.add(sprite)
+      this._pickups.push({ sprite, baseY: pos.y, cooldown: 0, active: true })
+    }
+  }
+
+  _updatePickups(dt) {
+    this._pickupTime += dt
+    for (const p of this._pickups) {
+      if (!p.active) {
+        p.cooldown -= dt
+        if (p.cooldown <= 0) {
+          p.active = true
+          p.sprite.visible = true
+        }
+        continue
+      }
+      p.sprite.position.y = p.baseY + Math.sin(this._pickupTime * 2.5) * 0.4
+      p.sprite.material.rotation = Math.sin(this._pickupTime * 1.5) * 0.15
+
+      for (const car of this.cars) {
+        if (!car || car.eliminated || car.health >= MAX_HEALTH) continue
+        const dx = car.position.x - p.sprite.position.x
+        const dy = car.position.y - p.sprite.position.y
+        const dz = car.position.z - p.sprite.position.z
+        if (dx * dx + dy * dy + dz * dz < PICKUP_RADIUS * PICKUP_RADIUS) {
+          car.health = Math.min(MAX_HEALTH, car.health + HEAL_AMOUNT)
+          window.dispatchEvent(new CustomEvent('car:hit', {
+            detail: { slot: car.slot, health: car.health, damage: -HEAL_AMOUNT, pos: car.position }
+          }))
+          p.active = false
+          p.sprite.visible = false
+          p.cooldown = PICKUP_RESPAWN
+          break
+        }
+      }
+    }
+  }
+
+  _disposePickups() {
+    for (const p of this._pickups) {
+      this.scene.remove(p.sprite)
+      p.sprite.material.dispose()
+    }
+    this._pickups = []
   }
 
   get localCar() {

@@ -130,9 +130,11 @@
 - Guest receives `room:state_change` with PLAYING → lobby hides, HUD shows
 
 **Lobby UI restructured:**
-- Primary: "PLAY" button (was "PLAY SOLO") with "DROP-IN MULTIPLAYER" hint
-- Secondary: "PRIVATE ROOM" section (was primary multiplayer) with create/join codes
-- `lobby:solo` event replaced by `lobby:play`
+- Primary: "PLAY" button → instant solo as public host (zero delay)
+- "JOIN GAME" button → disabled by default, highlights green when background scan finds a game
+- Background scan (4s interval) probes `wy-pub-*` IDs via lightweight `checkPublicAvailable()`
+- Secondary: "PRIVATE ROOM" section with create/join codes
+- Events: `lobby:play` (instant solo), `lobby:join_public` (join discovered game)
 
 **Private rooms unchanged** — existing create/join flow with random codes preserved
 

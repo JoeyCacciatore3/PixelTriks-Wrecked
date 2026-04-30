@@ -42,6 +42,17 @@ export class Physics {
     return body;
   }
 
+  addStaticConvexHull({ cx, cy, cz, points, friction = 0.5, restitution = 0.3 }) {
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(cx, cy, cz)
+    )
+    this.world.createCollider(
+      RAPIER.ColliderDesc.convexHull(points).setFriction(friction).setRestitution(restitution),
+      body
+    )
+    return body
+  }
+
   // Box body for cars — Y-rotation enabled, X/Z locked to stay flat
   createBoxBody({ position, hw = 1.1, hh = 0.38, hd = 0.65,
                   linearDamping = 0.55, angularDamping = 3.5 }) {

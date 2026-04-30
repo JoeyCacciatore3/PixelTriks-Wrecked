@@ -58,9 +58,18 @@
       color: #ff3d5a; font-size: 12px; max-width: 600px;
       white-space: pre-wrap; word-break: break-word;
     }
+
+    /* Move Vibe Jam widget from bottom-right to top-center */
+    body > a[href*="vibej"][style*="fixed"] {
+      bottom: auto !important;
+      right: auto !important;
+      top: 8px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+    }
   </style>
-  <script type="module" crossorigin src="/assets/index-BKAOq4xl.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/three-DOvCRIlS.js">
+  <script type="module" crossorigin src="/assets/index-DO9ne5RW.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/three-DvUV1T7x.js">
   <link rel="modulepreload" crossorigin href="/assets/rapier-D3Mqfikn.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-CoU_Qhs6.js">
 </head>
@@ -72,5 +81,13 @@
     <pre id="error-message"></pre>
   </div>
 
+  <script>
+    new MutationObserver((_, obs) => {
+      const w = document.querySelector('a[href*="vibej"]')
+      if (!w) return
+      obs.disconnect()
+      w.style.cssText += ';bottom:auto!important;right:auto!important;top:8px!important;left:50%!important;transform:translateX(-50%)!important;'
+    }).observe(document.body, { childList: true })
+  </script>
 </body>
 </html>
