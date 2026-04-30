@@ -39,7 +39,9 @@ export class Arena {
     this._portalUsed = false
     this._exitPortals = []
     this._portalTime = 0
-    this._exitPortalUsed = [false, false, false, false]
+    this._exitPortalUsed = [false, false]
+    this._flags = []
+    this._flagTime = 0
 
     this._buildFloor();
     this._buildWalls();
@@ -81,9 +83,7 @@ export class Arena {
     const xWalls = [-1, 1]
     for (const sign of xWalls) {
       const wallX = sign * (innerX + T / 2)
-      const leftHD = (innerZ - GAP) / 2
-      this.physics.addStaticBox({ cx: wallX, cy, cz: -(innerZ + GAP) / 2, hw: T / 2, hh: H / 2, hd: leftHD, friction: 0.5, restitution: 0.1 })
-      this.physics.addStaticBox({ cx: wallX, cy, cz:  (innerZ + GAP) / 2, hw: T / 2, hh: H / 2, hd: leftHD, friction: 0.5, restitution: 0.1 })
+      this.physics.addStaticBox({ cx: wallX, cy, cz: 0, hw: T / 2, hh: H / 2, hd: innerZ, friction: 0.5, restitution: 0.1 })
     }
   }
 
@@ -234,8 +234,6 @@ export class Arena {
     const configs = [
       { x: 0,  z: -(hd - horizHalf + 2), rotY: 0 },
       { x: 0,  z:  (hd - horizHalf + 2), rotY: Math.PI },
-      { x: -(hw - horizHalf + 2), z: 0,  rotY: Math.PI / 2 },
-      { x:  (hw - horizHalf + 2), z: 0,  rotY: -Math.PI / 2 },
     ]
 
     for (const r of configs) {
@@ -513,8 +511,6 @@ export class Arena {
     const rampConfigs = [
       { x: 0,  z: -(hd - horizHalf + 2), rotY: 0 },
       { x: 0,  z:  (hd - horizHalf + 2), rotY: Math.PI },
-      { x: -(hw - horizHalf + 2), z: 0,  rotY: Math.PI / 2 },
-      { x:  (hw - horizHalf + 2), z: 0,  rotY: -Math.PI / 2 },
     ]
 
     const ringGeom = new THREE.TorusGeometry(2.5, 0.18, 16, 32)
@@ -585,6 +581,17 @@ export class Arena {
 
   update(dt, allCars) {
     this._portalTime += dt
+    this._flagTime += dt
+    for (const flag of this._flags) {
+      const pos = flag.geometry.attributes.position
+      const base = flag._basePositions
+      for (let i = 0; i < pos.count; i++) {
+        const bx = base[i * 3]
+        const t = this._flagTime * 3 + bx * 0.5
+        pos.array[i * 3 + 2] = base[i * 3 + 2] + Math.sin(t) * (0.3 + bx * 0.08)
+      }
+      pos.needsUpdate = true
+    }
     if (this._portalRing) {
       this._portalRing.rotation.y += dt * 0.5
       this._portalRing.rotation.z += dt * 0.3
@@ -683,6 +690,34 @@ export class Arena {
       const tip = new THREE.Mesh(tipGeom, tipMat);
       tip.position.set(x, WALL_H * 2 + 0.2, z);
       this.scene.add(tip);
+
+      const poleGeom = new THREE.CylinderGeometry(0.12, 0.12, 10, 6)
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.6, roughness: 0.3 })
+      const pole = new THREE.Mesh(poleGeom, poleMat)
+      pole.position.set(x, WALL_H * 2 + 0.4 + 5, z)
+      this.scene.add(pole)
+
+      const flagCanvas = document.createElement('canvas')
+      flagCanvas.width = 512
+      flagCanvas.height = 256
+      const fc = flagCanvas.getContext('2d')
+      fc.fillStyle = '#22c55e'
+      fc.fillRect(0, 0, 512, 256)
+      fc.fillStyle = '#ffffff'
+      fc.font = 'bold 96px ui-monospace, monospace'
+      fc.textAlign = 'center'
+      fc.textBaseline = 'middle'
+      fc.fillText('VIBEJAM', 256, 110)
+      fc.font = 'bold 48px ui-monospace, monospace'
+      fc.fillText('2026', 256, 190)
+      const flagTex = new THREE.CanvasTexture(flagCanvas)
+      const flagGeom = new THREE.PlaneGeometry(12, 6, 20, 1)
+      const flagMat = new THREE.MeshBasicMaterial({ map: flagTex, side: THREE.DoubleSide })
+      const flag = new THREE.Mesh(flagGeom, flagMat)
+      flag.position.set(x + 6, WALL_H * 2 + 0.4 + 5, z)
+      flag._basePositions = flagGeom.attributes.position.array.slice()
+      this._flags.push(flag)
+      this.scene.add(flag)
     }
 
     // Scatter jump mounds across the ground floor (drivable ramps)
@@ -694,8 +729,12 @@ export class Arena {
     ]
     const moundRadius = 2.0
     const moundHeight = 0.7
-    const moundSegs = 12
-    const moundMat = new THREE.MeshStandardMaterial({ map: pillarTexture(), roughness: 0.85, metalness: 0.2 })
+    const moundSegs = 32
+    const moundTex = pillarTexture(true)
+    moundTex.wrapS = THREE.RepeatWrapping
+    moundTex.wrapT = THREE.RepeatWrapping
+    moundTex.repeat.set(2, 2)
+    const moundMat = new THREE.MeshStandardMaterial({ map: moundTex, roughness: 0.85, metalness: 0.2 })
     const moundGeom = new THREE.SphereGeometry(moundRadius, moundSegs, moundSegs, 0, Math.PI * 2, 0, Math.PI / 2)
     moundGeom.scale(1, moundHeight / moundRadius, 1)
     const moundMesh = new THREE.InstancedMesh(moundGeom, moundMat, moundPositions.length)

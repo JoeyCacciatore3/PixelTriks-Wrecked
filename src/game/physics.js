@@ -42,6 +42,17 @@ export class Physics {
     return body;
   }
 
+  addStaticCylinder({ cx, cy, cz, radius, halfHeight, friction = 0.5, restitution = 0.3 }) {
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(cx, cy, cz)
+    )
+    this.world.createCollider(
+      RAPIER.ColliderDesc.cylinder(halfHeight, radius).setFriction(friction).setRestitution(restitution),
+      body
+    )
+    return body
+  }
+
   addStaticConvexHull({ cx, cy, cz, points, friction = 0.5, restitution = 0.3 }) {
     const body = this.world.createRigidBody(
       RAPIER.RigidBodyDesc.fixed().setTranslation(cx, cy, cz)

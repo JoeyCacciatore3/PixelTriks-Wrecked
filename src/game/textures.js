@@ -26,6 +26,10 @@ function load(path, opts = {}) {
   return tex
 }
 
+export function bulletTexture() {
+  return load('textures/firebullet.png', { nearest: true })
+}
+
 export function groundTexture() {
   return load('textures/ground.png', { repeat: [10, 20] })
 }
@@ -42,8 +46,8 @@ export function rampTexture(unique = false) {
   return load('textures/ramp.png', { repeat: [1, 1], unique })
 }
 
-export function pillarTexture() {
-  return load('textures/pillar.png', { repeat: [1, 1] })
+export function pillarTexture(unique = false) {
+  return load('textures/pillar.png', { repeat: [1, 1], unique })
 }
 
 export function barrelTexture() {

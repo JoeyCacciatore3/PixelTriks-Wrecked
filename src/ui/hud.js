@@ -159,7 +159,6 @@ export class DerbyHUD {
         .hb-label { font-size: 9px; }
         .hb-row.local { padding: 2px 3px; margin: -2px -3px; }
 
-        #hud-status { font-size: clamp(20px, 7vw, 36px); }
       }
     `;
     document.head.appendChild(s);

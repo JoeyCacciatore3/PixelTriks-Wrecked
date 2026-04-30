@@ -101,7 +101,7 @@ export class ResultsUI {
         font-family: ui-monospace, 'SF Mono', monospace;
         transition: opacity 0.5s;
       }.results-wrap { text-align: center; padding: 40px 24px; }
-      .results-label { font-size: 11px; font-weight: bold; letter-spacing: 0.3em; color: #94a3b8; margin-bottom: 10px; }
+      .results-label { font-size: 11px; font-weight: bold; letter-spacing: 0.3em; color: #ffffff; text-shadow: 1px 1px 0 #eab308; margin-bottom: 10px; }
       #results-winner {
         font-size: clamp(36px, 8vw, 56px); font-weight: 900; letter-spacing: 0.1em;
         margin-bottom: 24px;
@@ -115,10 +115,10 @@ export class ResultsUI {
         padding: 12px 20px; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); min-width: 90px;
       }
       .stat-label {
-        font-size: 9px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8;
+        font-size: 9px; font-weight: bold; letter-spacing: 0.2em; color: #ffffff; text-shadow: 1px 1px 0 #eab308;
       }
       .stat-val {
-        font-size: 22px; font-weight: 900; letter-spacing: 0.1em; color: #e2e8f0;
+        font-size: 22px; font-weight: 900; letter-spacing: 0.1em; color: #ffffff; text-shadow: 2px 2px 0 #eab308;
         margin: 4px 0 0;
       }
       .results-ranks {
@@ -134,14 +134,14 @@ export class ResultsUI {
       }
       .rr-hcell {
         font-size: 9px; font-weight: bold; letter-spacing: 0.15em;
-        color: #94a3b8; text-align: center;
+        color: #ffffff; text-shadow: 1px 1px 0 #eab308; text-align: center;
       }
       .rr-row {
         display: flex; align-items: center; gap: 0;
         padding: 7px 10px; background: rgba(255,255,255,0.06);
         border-radius: 6px;
       }
-      .rr-cell { font-size: 12px; font-weight: bold; text-align: center; color: #e2e8f0; }
+      .rr-cell { font-size: 12px; font-weight: bold; text-align: center; color: #ffffff; text-shadow: 1px 1px 0 #eab308; }
       .rr-c-rank { width: 32px; text-align: center; }
       .rr-c-name { flex: 1; text-align: left; letter-spacing: 0.15em; }
       .rr-c-stat { width: 70px; text-align: center; }
@@ -155,8 +155,8 @@ export class ResultsUI {
       .results-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); }
       .results-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
       .results-portal {
-        display: block; font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8;
-        text-decoration: none; transition: color 0.15s;
+        display: block; font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #ffffff;
+        text-decoration: none; transition: color 0.15s; text-shadow: 1px 1px 0 #eab308;
       }
       .results-portal:hover { color: #22c55e; }
     `;

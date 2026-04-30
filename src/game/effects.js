@@ -124,7 +124,7 @@ class DamageNumbers {
     n.y = pos.y + 1.5
     n.z = pos.z
     n.age = 0
-    n.baseScale = heal ? 3 : 1
+    n.baseScale = heal ? 3 : 2
     n.mesh.position.set(n.x, n.y, n.z)
     n.mesh.visible = true
     n.mat.opacity = 1
@@ -133,12 +133,12 @@ class DamageNumbers {
     ctx.clearRect(0, 0, 128, 128)
     ctx.fillStyle = heal ? '#22ff44' : '#ff4444'
     ctx.strokeStyle = '#000'
-    ctx.lineWidth = heal ? 4 : 0
+    ctx.lineWidth = 4
     ctx.font = 'bold 64px ui-monospace, monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     const text = heal ? '+' + Math.floor(Math.abs(damage)) : String(Math.floor(damage))
-    if (heal) ctx.strokeText(text, 64, 64)
+    ctx.strokeText(text, 64, 64)
     ctx.fillText(text, 64, 64)
     n.tex.needsUpdate = true
   }
@@ -278,6 +278,54 @@ export class Effects {
     requestAnimationFrame(animate)
   }
 
+  _initDebrisPool() {
+    const POOL = 16
+    this._debrisPool = []
+    const geom = new THREE.BoxGeometry(1, 1, 1)
+    for (let i = 0; i < POOL; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+      const mesh = new THREE.Mesh(geom, mat)
+      mesh.visible = false
+      this._scene.add(mesh)
+      this._debrisPool.push({ mesh, mat, active: false })
+    }
+  }
+
+  _spawnDebris(d) {
+    if (!this._debrisPool) this._initDebrisPool()
+    const colorTable = [0xef4444, 0x22c55e, 0x3b82f6, 0xeab308]
+    const carColor = d.slot != null ? colorTable[d.slot % colorTable.length] : 0xffaa00
+    const debrisColors = [carColor, 0xe2e8f0, 0x94a3b8, carColor]
+    for (let i = 0; i < 4; i++) {
+      const entry = this._debrisPool.find(e => !e.active)
+      if (!entry) return
+      entry.active = true
+      const size = 0.15 + Math.random() * 0.2
+      entry.mesh.scale.setScalar(size)
+      entry.mat.color.set(debrisColors[i])
+      entry.mat.opacity = 1
+      entry.mesh.visible = true
+      entry.mesh.position.set(d.pos.x, d.pos.y + 0.5, d.pos.z)
+      entry.mesh.rotation.set(0, 0, 0)
+      const vx = (Math.random() - 0.5) * 8
+      const vy = 3 + Math.random() * 5
+      const vz = (Math.random() - 0.5) * 8
+      const ox = d.pos.x, oy = d.pos.y, oz = d.pos.z
+      const dStart = performance.now()
+      const animate = () => {
+        const dt = (performance.now() - dStart) / 1000
+        if (dt >= 2) { entry.mesh.visible = false; entry.active = false; return }
+        entry.mesh.position.x = ox + vx * dt
+        entry.mesh.position.y = oy + 0.5 + vy * dt - 9.8 * dt * dt
+        entry.mesh.position.z = oz + vz * dt
+        entry.mesh.rotation.x += 0.1; entry.mesh.rotation.z += 0.08
+        entry.mat.opacity = Math.max(0, 1 - dt / 2)
+        requestAnimationFrame(animate)
+      }
+      requestAnimationFrame(animate)
+    }
+  }
+
   _burst(pos, count, color, opts) {
     this.particles.burst(pos, this._mobile ? Math.ceil(count * 0.5) : count, color, opts)
   }
@@ -328,32 +376,7 @@ export class Effects {
       }
       requestAnimationFrame(fade)
 
-      const colorTable = [0xef4444, 0x22c55e, 0x3b82f6, 0xeab308]
-      const carColor = d.slot != null ? colorTable[d.slot % colorTable.length] : 0xffaa00
-      const debrisColors = [carColor, 0xe2e8f0, 0x94a3b8, carColor]
-      for (let i = 0; i < 4; i++) {
-        const size = 0.15 + Math.random() * 0.2
-        const geom = new THREE.BoxGeometry(size, size, size)
-        const mat = new THREE.MeshBasicMaterial({ color: debrisColors[i], transparent: true, opacity: 1 })
-        const mesh = new THREE.Mesh(geom, mat)
-        mesh.position.set(d.pos.x, d.pos.y + 0.5, d.pos.z)
-        this._scene.add(mesh)
-        const vx = (Math.random() - 0.5) * 8
-        const vy = 3 + Math.random() * 5
-        const vz = (Math.random() - 0.5) * 8
-        const dStart = performance.now()
-        const animateDebris = () => {
-          const dt = (performance.now() - dStart) / 1000
-          if (dt >= 2) { this._scene.remove(mesh); geom.dispose(); mat.dispose(); return }
-          mesh.position.x = d.pos.x + vx * dt
-          mesh.position.y = d.pos.y + 0.5 + vy * dt - 9.8 * dt * dt
-          mesh.position.z = d.pos.z + vz * dt
-          mesh.rotation.x += 0.1; mesh.rotation.z += 0.08
-          mat.opacity = Math.max(0, 1 - dt / 2)
-          requestAnimationFrame(animateDebris)
-        }
-        requestAnimationFrame(animateDebris)
-      }
+      this._spawnDebris(d)
     }
   }
 

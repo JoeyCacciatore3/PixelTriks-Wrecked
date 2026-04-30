@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { carBodyTexture } from './textures.js';
+import { carBodyTexture, bulletTexture } from './textures.js';
 import { isMobile } from '../util/detect.js';
 
 export const CAR_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#eab308'];
@@ -32,6 +32,7 @@ const _tmpV = new THREE.Vector3()
 const _tmpV2 = new THREE.Vector3()
 const _tmpV3 = new THREE.Vector3()
 const _bulletM4 = new THREE.Matrix4()
+const _bulletScale = new THREE.Vector3(1, 1, 1)
 const _hideM4 = new THREE.Matrix4().makeScale(0, 0, 0)
 
 let _sharedCamera = null
@@ -187,29 +188,14 @@ export class Car {
     this._group.add(glow);
     this._glowMat = glowMat;
 
-    // Slot number decal (billboard)
-    const numCanvas = document.createElement('canvas');
-    numCanvas.width = 64; numCanvas.height = 64;
-    const nc = numCanvas.getContext('2d');
-    nc.fillStyle = this.color; nc.font = 'bold 36px monospace';
-    nc.textAlign = 'center'; nc.textBaseline = 'middle';
-    nc.fillText(String(this.slot + 1), 32, 32);
-    const numTex = new THREE.CanvasTexture(numCanvas);
-    const numGeom = new THREE.PlaneGeometry(0.45, 0.45);
-    const numMat  = new THREE.MeshBasicMaterial({ map: numTex, transparent: true, depthWrite: false });
-    const numMesh = new THREE.Mesh(numGeom, numMat);
-    numMesh.position.set(0, 1.08, 0);
-    this.scene.add(numMesh);
-    this._numMesh = numMesh;
 
     this._group.scale.set(1.25, 1.25, 1.25);
     this.scene.add(this._group);
   }
 
   _buildBulletPool() {
-    const colorHex = parseInt(this.color.replace('#', ''), 16)
-    const geom = new THREE.SphereGeometry(0.1, 6, 4)
-    const mat = new THREE.MeshBasicMaterial({ color: colorHex })
+    const geom = new THREE.PlaneGeometry(1.2, 1.2)
+    const mat = new THREE.MeshBasicMaterial({ map: bulletTexture(), transparent: true, depthWrite: false })
     this._bulletMesh = new THREE.InstancedMesh(geom, mat, BULLET_POOL_SIZE)
     this._bulletMesh.frustumCulled = false
     const hide = new THREE.Matrix4().makeScale(0, 0, 0)
@@ -345,10 +331,6 @@ export class Car {
       this._group.scale.y = this._squashTimer > 0 ? 1.25 * 0.85 : 1.25
     }
 
-    if (this._numMesh) {
-      this._numMesh.position.set(pos.x, pos.y + 1.4, pos.z)
-      if (_sharedCamera) this._numMesh.quaternion.copy(_sharedCamera.quaternion)
-    }
 
     if (this._spawnShield > 0) this._spawnShield -= dt
     if (this._hitFlash > 0) {
@@ -452,7 +434,15 @@ export class Car {
       b.x += b.vx * dt
       b.y += b.vy * dt
       b.z += b.vz * dt
-      _bulletM4.makeTranslation(b.x, b.y, b.z)
+      if (_sharedCamera) {
+        _bulletM4.compose(
+          _tmpV.set(b.x, b.y, b.z),
+          _sharedCamera.quaternion,
+          _bulletScale
+        )
+      } else {
+        _bulletM4.makeTranslation(b.x, b.y, b.z)
+      }
       this._bulletMesh.setMatrixAt(i, _bulletM4)
       dirty = true
     }
@@ -513,9 +503,16 @@ export class Car {
   }
 
   dispose() {
-    this.scene.remove(this._group);
-    if (this._numMesh) this.scene.remove(this._numMesh)
-    if (this._bulletMesh) this.scene.remove(this._bulletMesh)
-    if (this._body && this.physics.world) this.physics.world.removeRigidBody(this._body);
+    this.scene.remove(this._group)
+    if (this._bulletMesh) {
+      this.scene.remove(this._bulletMesh)
+      this._bulletMesh.geometry.dispose()
+      this._bulletMesh.material.dispose()
+    }
+    if (this._bodyMat) this._bodyMat.dispose()
+    if (this._cabinMat) this._cabinMat.dispose()
+    if (this._bumperMat) this._bumperMat.dispose()
+    if (this._glowMat) this._glowMat.dispose()
+    if (this._body && this.physics.world) this.physics.world.removeRigidBody(this._body)
   }
 }

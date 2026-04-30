@@ -41,9 +41,9 @@ export class KillFeed {
     if (attackerSlot !== undefined && attackerSlot !== victimSlot) {
       const attackerName = CAR_NAMES[attackerSlot % CAR_NAMES.length] || 'UNKNOWN'
       const attackerColor = CAR_COLORS[attackerSlot % CAR_COLORS.length] || '#fff'
-      entry.innerHTML = `<span style="color:${attackerColor}">${attackerName}</span> <span style="color:#94a3b8">WRECKED</span> <span style="color:${victimColor}">${victimName}</span>`
+      entry.innerHTML = `<span style="color:${attackerColor}">${attackerName}</span> <span style="color:#ffffff">WRECKED</span> <span style="color:${victimColor}">${victimName}</span>`
     } else {
-      entry.innerHTML = `<span style="color:${victimColor}">${victimName}</span> <span style="color:#94a3b8">WRECKED</span>`
+      entry.innerHTML = `<span style="color:${victimColor}">${victimName}</span> <span style="color:#ffffff">WRECKED</span>`
     }
 
     this._el.appendChild(entry)

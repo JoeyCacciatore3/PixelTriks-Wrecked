@@ -26,10 +26,30 @@ export class Input {
     this._buttonPointers = new Map()
 
     this._touchEls = null
+    this._buildActionButtons()
     if (isMobile) this._buildTouchUI()
   }
 
-  // ── Touch UI ──
+  // ── Action Buttons (all platforms) ──
+
+  _buildActionButtons() {
+    const btnWrap = document.createElement('div')
+    btnWrap.id = 'action-buttons'
+    btnWrap.style.cssText = 'position:fixed;right:calc(16px + env(safe-area-inset-right, 0px));bottom:20px;z-index:6;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
+    document.body.appendChild(btnWrap)
+
+    const jumpBtn = this._makeTouchBtn('BOOST', 72, '#44ddff')
+    const fireBtn = this._makeTouchBtn('FIRE', 80, '#ff6600')
+    btnWrap.appendChild(jumpBtn)
+    btnWrap.appendChild(fireBtn)
+
+    this._wireButton(fireBtn, 'fire')
+    this._wireButton(jumpBtn, 'jump')
+
+    this._actionEls = { btnWrap, jumpBtn, fireBtn }
+  }
+
+  // ── Touch UI (mobile only) ──
 
   _buildTouchUI() {
     const canvas = document.querySelector('canvas')
@@ -53,16 +73,6 @@ export class Input {
     const joyDot = document.createElement('div')
     joyDot.style.cssText = 'position:absolute;width:48px;height:48px;border-radius:50%;background:rgba(255,68,0,0.5);border:2px solid rgba(255,68,0,0.7);display:none;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 10px rgba(255,68,0,0.3);'
     container.appendChild(joyDot)
-
-    // Buttons (right side) — two large buttons, stacked with FIRE on bottom (thumb reach)
-    const btnWrap = document.createElement('div')
-    btnWrap.style.cssText = 'position:absolute;right:calc(16px + env(safe-area-inset-right, 0px));bottom:20px;display:flex;flex-direction:column;gap:12px;pointer-events:auto;touch-action:none;align-items:center;'
-    container.appendChild(btnWrap)
-
-    const jumpBtn = this._makeTouchBtn('BOOST', 72, '#44ddff')
-    const fireBtn = this._makeTouchBtn('FIRE', 80, '#ff6600')
-    btnWrap.appendChild(jumpBtn)
-    btnWrap.appendChild(fireBtn)
 
     // Joystick pointer events
     joyZone.addEventListener('pointerdown', (e) => {
@@ -118,10 +128,6 @@ export class Input {
     window.addEventListener('pointerup', (e) => {
       if (e.pointerId === this._joystickId) joystickEnd(e)
     })
-
-    // Button events
-    this._wireButton(fireBtn, 'fire')
-    this._wireButton(jumpBtn, 'jump')
 
     // Orientation overlay
     let orientDismissed = false
@@ -242,7 +248,7 @@ export class Input {
     document.addEventListener('fullscreenchange', updateFsLabel)
     document.addEventListener('webkitfullscreenchange', updateFsLabel)
 
-    this._touchEls = { container, joyZone, joyRing, joyDot, btnWrap, fireBtn, jumpBtn, orientOverlay, fsBtn }
+    this._touchEls = { container, joyZone, joyRing, joyDot, orientOverlay, fsBtn }
   }
 
   _makeTouchBtn(label, size, color) {

@@ -109,35 +109,13 @@ async function boot() {
     lobby.hide()
     hud.show()
     derby.beginMatchCountdown()
-    try {
-      await room.createPublicRoom()
-      derby.setSyncManager(sync, true)
-    } catch (_) {}
   }
 
   // ── Join any available room ──
 
-  window.addEventListener('lobby:join_any', async () => {
-    if (_playStarted || derby.state !== DerbyState.LOBBY) return
-    _playStarted = true
-    try {
-      const joined = await room.findAndJoinPublic()
-      lobby.hideSearching()
-      if (joined) {
-        lobby.enterAsGuest()
-        derby.setSyncManager(sync, false)
-        return
-      }
-    } catch (_) {
-      lobby.hideSearching()
-    }
-    _playStarted = false
-    lobby.showToast('NO ROOMS FOUND')
-  })
-
   window.addEventListener('lobby:play', () => startPlay());
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && derby.state === DerbyState.LOBBY && derby.allCars.length === 0) startPlay();
+    if (e.key === 'Enter' && derby.state === DerbyState.LOBBY && derby.allCars.length === 0 && !_playStarted) startPlay();
   });
 
   // ── Host start button — skip lobby countdown ──
@@ -169,6 +147,7 @@ async function boot() {
     await room.joinRoom(code)
     lobby.enterAsGuest()
     derby.setSyncManager(sync, false)
+    derby.startLobby()
   };
 
   // ── Room events ──
@@ -193,6 +172,13 @@ async function boot() {
   window.addEventListener('room:player_leave', (e) => {
     const { slot } = e.detail
     lobby.setSlotEmpty(slot)
+    if (slot === 0 && !room.isHost && derby.state === DerbyState.LOBBY) {
+      room.leave()
+      lobby._exitRoomView()
+      lobby.showToast('HOST DISCONNECTED')
+      _playStarted = false
+      return
+    }
     const car = derby.cars[slot]
     if (car && !car.eliminated && !derby.drivers[slot]) {
       derby.addAI(slot)
@@ -219,6 +205,10 @@ async function boot() {
   // ── Results ──
 
   results.onPlayAgain = () => { results.hide(); window.location.reload(); };
+
+  const cleanup = () => room.leave()
+  window.addEventListener('beforeunload', cleanup)
+  window.addEventListener('pagehide', cleanup)
 
   // ── Mute ──
 
@@ -264,7 +254,6 @@ async function boot() {
   }
 
   requestAnimationFrame(tick);
-  window.__wy = { engine, physics, derby, room, sync, audio, effects };
 
   if (isPortalUser) startPlay()
 }

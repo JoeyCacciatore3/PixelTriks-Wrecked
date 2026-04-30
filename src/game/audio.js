@@ -15,7 +15,7 @@ export class AudioBus {
   init() {
     if (this.ctx) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) { console.warn('[audio] Web Audio API unavailable'); return; }
+    if (!Ctx) return
 
     this.ctx = new Ctx();
     this.masterGain = this.ctx.createGain();
@@ -73,7 +73,7 @@ export class AudioBus {
     const fn = SOUNDS[name];
     if (!fn) return;
     try { fn(this.ctx, this.masterGain, opts); }
-    catch (e) { console.warn('[audio] play failed:', e); }
+    catch (_) {}
   }
 
   updateEngine(speed) {

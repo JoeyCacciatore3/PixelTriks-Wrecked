@@ -1,9 +1,6 @@
 import Peer from 'peerjs';
 
-const PUBLIC_POOL_SIZE = 10
-const PUBLIC_PREFIX = 'wy-pub-'
 const PRIVATE_PREFIX = 'wy-'
-const CONNECT_TIMEOUT = 3000
 
 function randomCode(len = 6) {
   return Array.from({ length: len }, () =>
@@ -19,100 +16,9 @@ export class RoomManager {
     this.myId      = null
     this.mySlot    = -1
     this.isHost    = false
-    this.isPublic  = false
     this._slots    = {}
     this._lastPong = {}
     this._heartbeatId = null
-  }
-
-  async createPublicRoom() {
-    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
-      const peerId = PUBLIC_PREFIX + String(i).padStart(3, '0')
-      try {
-        await this._registerAsPeer(peerId)
-        this.code = 'PUBLIC-' + i
-        this.isPublic = true
-        return this.code
-      } catch (_) {}
-    }
-    throw new Error('All public slots full')
-  }
-
-  async findAndJoinPublic() {
-    this._peer = new Peer()
-    const myId = await new Promise((resolve, reject) => {
-      this._peer.on('open', resolve)
-      this._peer.on('error', reject)
-      setTimeout(() => reject(new Error('timeout')), CONNECT_TIMEOUT)
-    })
-
-    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
-      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
-      try {
-        const conn = this._peer.connect(hostId)
-        const ok = await new Promise((resolve) => {
-          conn.on('open', () => resolve(true))
-          conn.on('error', () => resolve(false))
-          setTimeout(() => resolve(false), CONNECT_TIMEOUT)
-        })
-        if (!ok) continue
-
-        const firstMsg = await new Promise((resolve) => {
-          conn.on('data', function handler(msg) {
-            conn.off('data', handler)
-            resolve(msg)
-          })
-          setTimeout(() => resolve(null), CONNECT_TIMEOUT)
-        })
-
-        if (!firstMsg || firstMsg.type === 'room_full') continue
-
-        this.myId = myId
-        this.isHost = false
-        this._conns[0] = conn
-        conn.on('data', (msg) => this._onData(msg, 0))
-        conn.on('close', () => this._handleDisconnect(0))
-        this._lastPong[0] = Date.now()
-        this._startHeartbeat()
-
-        if (firstMsg.type === 'assign_slot') {
-          this.mySlot = firstMsg.slot
-          this._slots[firstMsg.slot] = this.myId
-          window.dispatchEvent(new CustomEvent('room:player_join', {
-            detail: { slot: firstMsg.slot, playerId: this.myId }
-          }))
-          if (firstMsg.gameState && firstMsg.gameState !== 'LOBBY') {
-            window.dispatchEvent(new CustomEvent('room:state_change', {
-              detail: { state: firstMsg.gameState }
-            }))
-          }
-        }
-        return hostId
-      } catch (_) {}
-    }
-
-    this._peer.destroy()
-    this._peer = null
-    return null
-  }
-
-  async _registerAsPeer(peerId) {
-    this._peer = new Peer(peerId)
-    await new Promise((resolve, reject) => {
-      this._peer.on('open', () => resolve())
-      this._peer.on('error', (err) => {
-        this._peer = null
-        reject(new Error(err.type || String(err)))
-      })
-    })
-
-    this.myId = peerId
-    this.isHost = true
-    this.mySlot = 0
-    this._slots[0] = peerId
-
-    this._peer.on('connection', (conn) => this._hostOnConn(conn))
-    this._startHeartbeat()
   }
 
   async createRoom() {
@@ -216,6 +122,11 @@ export class RoomManager {
       window.dispatchEvent(new CustomEvent('room:player_join', {
         detail: { slot: msg.slot, playerId: this.myId }
       }));
+      if (msg.gameState && msg.gameState !== 'LOBBY') {
+        window.dispatchEvent(new CustomEvent('room:state_change', {
+          detail: { state: msg.gameState }
+        }));
+      }
     }
 
     if (msg.type === 'state') {
@@ -273,11 +184,12 @@ export class RoomManager {
   // ── Cleanup ──
 
   leave() {
-    if (this._heartbeatId) clearInterval(this._heartbeatId)
+    if (this._heartbeatId) { clearInterval(this._heartbeatId); this._heartbeatId = null }
     for (const conn of Object.values(this._conns)) {
       try { conn.close() } catch (_) {}
     }
-    if (this._peer) try { this._peer.destroy() } catch (_) {}
+    this._conns = {}
+    if (this._peer) { try { this._peer.destroy() } catch (_) {}; this._peer = null }
   }
 
   setGameState(state) { this._gameState = state }
