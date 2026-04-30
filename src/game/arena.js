@@ -533,7 +533,9 @@ export class Arena {
         const dz = p.z - this._portalCenter.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 3) {
           this._portalUsed = true
-          window.open('https://vibej.am/portal/2026', '_blank', 'noopener')
+          const ref = window.__portalRef
+          const portalUrl = ref ? ref : 'https://vibej.am/portal/2026'
+          window.open(portalUrl, '_blank', 'noopener')
           break
         }
       }

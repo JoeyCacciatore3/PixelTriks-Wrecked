@@ -27,6 +27,11 @@ function showError(err) {
   }
 }
 
+const portalParams = new URLSearchParams(window.location.search)
+const isPortalUser = portalParams.get('portal') === 'true'
+const portalRef = portalParams.get('ref') || ''
+if (isPortalUser) window.__portalRef = portalRef
+
 async function boot() {
   const engine = new Engine(document.getElementById('app'));
   engine.addGroundMesh({ size: 500 });
@@ -206,6 +211,8 @@ async function boot() {
 
   requestAnimationFrame(tick);
   window.__wy = { engine, physics, derby, room, sync, audio, effects };
+
+  if (isPortalUser) startSolo()
 }
 
 boot().catch(showError);
