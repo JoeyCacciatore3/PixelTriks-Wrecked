@@ -216,7 +216,7 @@ export class Arena {
 
   _buildDeathRamps() {
     const rampTex = rampTexture(true)
-    const rampWidth = 13.8
+    const rampWidth = 17.25
     const rampLen = 30
     rampTex.repeat.set(rampWidth / 5, rampLen / 5)
     rampTex.needsUpdate = true
@@ -273,7 +273,7 @@ export class Arena {
   }
 
   _buildSecondFloor() {
-    const platHalf = 37
+    const platHalf = 45
     const trimMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
 
     const tex = rampTexture(true)
@@ -313,7 +313,7 @@ export class Arena {
 
   _buildFloorRamps() {
     const rampTex = rampTexture(true);
-    const f2RampW = 9.2
+    const f2RampW = 11.5
     rampTex.repeat.set(f2RampW / 5, 22 / 5);
     rampTex.needsUpdate = true;
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTex, roughness: 0.6, metalness: 0.1, color: 0xffffff });
@@ -321,7 +321,7 @@ export class Arena {
     const rampLen = 22
     const rampHalfLen = rampLen / 2
     const tilt = Math.asin((FLOOR2_H + 0.5) / rampLen)
-    const platHalf = 37
+    const platHalf = 45
     const horizLen = Math.cos(tilt) * rampHalfLen
     const rise = Math.sin(tilt) * rampHalfLen
     const centerY = rise - 0.5
@@ -406,7 +406,7 @@ export class Arena {
 
   _buildThirdFloorRamps() {
     const rampTex = rampTexture(true)
-    const f3RampW = 6.9
+    const f3RampW = 8.625
     rampTex.repeat.set(f3RampW / 5, 24 / 5)
     rampTex.needsUpdate = true
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTex, roughness: 0.6, metalness: 0.1, color: 0xffffff })
@@ -736,7 +736,7 @@ export class Arena {
     const f2tilt = Math.asin((FLOOR2_H + 0.5) / 22)
     const f2Rise = Math.sin(f2tilt) * 11
     const f2Horiz = Math.cos(f2tilt) * 11
-    const platHalf = 37
+    const platHalf = 45
 
     const floorRamps = [
       { x: 0,                       z: -(platHalf + f2Horiz), dirX: 0,  dirZ: 1 },
@@ -749,9 +749,9 @@ export class Arena {
       const shiftAmt = f2Horiz * 0.2
       this.physics.addStaticBox({
         cx: r.x + r.dirX * shiftAmt, cy: fillH / 2, cz: r.z + r.dirZ * shiftAmt,
-        hw: r.dirZ !== 0 ? 2.9 : f2Horiz * 0.2,
+        hw: r.dirZ !== 0 ? 3.625 : f2Horiz * 0.2,
         hh: fillH / 2,
-        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : 2.9,
+        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : 3.625,
         friction: 0.1, restitution: 0.1
       })
     }
@@ -769,7 +769,7 @@ export class Arena {
       const shiftAmt = f3Horiz * 0.2
       this.physics.addStaticBox({
         cx: r.x, cy: FLOOR2_H + fillH / 2, cz: r.z + r.dirZ * shiftAmt,
-        hw: 2.1, hh: fillH / 2, hd: f3Horiz * 0.2,
+        hw: 2.625, hh: fillH / 2, hd: f3Horiz * 0.2,
         friction: 0.1, restitution: 0.1
       })
     }
@@ -917,9 +917,9 @@ export class Arena {
     const R = 36
     const r = 12
     const SINK = 1
-    const STRIP_W = 2.0
-    const STRIP_H = 0.08
-    const STRIP_Y = -SINK + STRIP_H / 2 + 0.02
+    const STRIP_W = 3.5
+    const STRIP_H = 0.12
+    const STRIP_Y = 0.08
 
     const stripMat = new THREE.MeshStandardMaterial({
       color: 0xeab308, emissive: 0xeab308, emissiveIntensity: 1.5,

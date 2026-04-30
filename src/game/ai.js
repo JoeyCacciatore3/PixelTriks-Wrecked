@@ -23,6 +23,15 @@ const WALL_MARGIN        = 10  // soft-bias zone, not a hard override
 const ARENA_HW = 100
 const ARENA_HD = 125
 
+const RAMP_SEEK_Y_THRESH = 4
+const PLAT_HALF = 45
+const RAMP_BASES = [
+  { x: 0,  z: -56, targetZ: -45 },
+  { x: 0,  z:  56, targetZ:  45 },
+  { x: -56, z: 0, targetX: -45 },
+  { x:  56, z: 0, targetX:  45 },
+]
+
 const AI_NAMES = ['HAL-9K', 'R.U.S.T', 'DEMOLON', 'WREX-4']
 
 export class AIDriver {
@@ -74,6 +83,16 @@ export class AIDriver {
     }
     this._target = nearest
     this._targetDist = nearestDist
+    this._rampGoal = null
+
+    if (nearest && nearest.position.y - p.y > RAMP_SEEK_Y_THRESH && p.y < 3) {
+      let bestRamp = null, bestDist = Infinity
+      for (const rb of RAMP_BASES) {
+        const d = Math.hypot(p.x - rb.x, p.z - rb.z)
+        if (d < bestDist) { bestDist = d; bestRamp = rb }
+      }
+      if (bestRamp) this._rampGoal = bestRamp
+    }
 
     this._input.firePressed = nearest != null && nearestDist < FIRE_DISTANCE
 
@@ -121,7 +140,10 @@ export class AIDriver {
 
     // Evade: if low HP and target is close, drive directly away
     let goalX = tp.x, goalZ = tp.z
-    if (this.car.health < EVADE_HEALTH && this._targetDist < 18) {
+    if (this._rampGoal) {
+      goalX = this._rampGoal.x
+      goalZ = this._rampGoal.z
+    } else if (this.car.health < EVADE_HEALTH && this._targetDist < 18) {
       goalX = pos.x + (pos.x - tp.x)
       goalZ = pos.z + (pos.z - tp.z)
     }

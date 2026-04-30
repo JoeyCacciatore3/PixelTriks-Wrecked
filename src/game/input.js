@@ -113,6 +113,11 @@ export class Input {
     }
     joyZone.addEventListener('pointerup', joystickEnd)
     joyZone.addEventListener('pointercancel', joystickEnd)
+    joyZone.addEventListener('lostpointercapture', joystickEnd)
+
+    window.addEventListener('pointerup', (e) => {
+      if (e.pointerId === this._joystickId) joystickEnd(e)
+    })
 
     // Button events
     this._wireButton(fireBtn, 'fire')
