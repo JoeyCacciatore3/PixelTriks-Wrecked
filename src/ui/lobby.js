@@ -217,7 +217,7 @@ export class LobbyUI {
       .logo-pt { font-size: 0.4em; color: #60a5fa; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); display: block; margin-bottom: -10px; }
       .logo-wrecked { color: #ef4444; text-shadow: 4px 4px 0 #eab308, 0 0 20px rgba(239,68,68,0.5); }
       .lobby-tagline {
-        font-size: 11px; letter-spacing: 0.25em; color: #e2e8f0; margin-bottom: 36px;
+        font-size: 11px; letter-spacing: 0.25em; color: #e2e8f0; margin-top: 8px; margin-bottom: 36px;
         font-weight: bold;
       }
       .lobby-grid {
