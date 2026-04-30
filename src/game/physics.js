@@ -1,6 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 
-export const GRAVITY = { x: 0, y: -22, z: 0 };
+const GRAVITY = { x: 0, y: -22, z: 0 };
 
 const FIXED_STEP = 1 / 60
 const MAX_SUBSTEPS = 4

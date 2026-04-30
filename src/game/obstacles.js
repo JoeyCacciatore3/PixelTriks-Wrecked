@@ -121,7 +121,7 @@ export class Obstacles {
 
   _resetBarrel(b) {
     this._hideBarrel(b)
-    setTimeout(() => this._respawnBarrel(b), RESPAWN_DELAY_MS / 2)
+    setTimeout(() => { if (!b.alive) this._respawnBarrel(b) }, RESPAWN_DELAY_MS / 2)
   }
 
   _hideBarrel(b) {

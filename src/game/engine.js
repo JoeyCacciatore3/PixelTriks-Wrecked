@@ -89,9 +89,4 @@ export class Engine {
 
   render() { this.renderer.render(this.scene, this.camera); }
 
-  dispose() {
-    window.removeEventListener('resize', this._onResize);
-    window.removeEventListener('orientationchange', this._onResize);
-    this.renderer.dispose();
-  }
 }

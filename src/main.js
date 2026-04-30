@@ -138,6 +138,7 @@ async function boot() {
   function stopBgScan() {
     if (_bgScanTimer) { clearTimeout(_bgScanTimer); _bgScanTimer = null }
     lobby.setJoinAvailable(false)
+    room.destroyProbe()
   }
 
   startBgScan()
@@ -165,14 +166,25 @@ async function boot() {
     if (e.key === 'Enter' && derby.state === DerbyState.LOBBY && derby.allCars.length === 0) startPlay();
   });
 
+  // ── Host start button — skip lobby countdown ──
+
+  window.addEventListener('lobby:host_start', () => {
+    if (derby.state !== DerbyState.LOBBY) return
+    derby.spawnInitialAI()
+    derby.beginMatchCountdown()
+    if (room.isHost) room.broadcastState('COUNTDOWN')
+  })
+
   // ── Private room — host flow ──
 
   lobby.onStart = async () => {
     const code = await room.createRoom()
     lobby.showRoomCode(code)
+    lobby.showHostStart()
     lobby.setSlot(0, 'YOU (HOST)')
     derby.addLocalPlayer(0)
     hud.setLocalSlot(0)
+    effects.setLocalSlot(0)
     derby.setSyncManager(sync, true)
     derby.startLobby()
   };

@@ -28,26 +28,24 @@ export class LobbyUI {
         <div class="lobby-tagline">CO-OP SURVIVAL DERBY</div>
 
         <div class="lobby-solo-wrap">
-          <button class="lobby-btn primary solo-btn" id="btn-play">PLAY</button>
+          <button class="lobby-btn primary solo-btn" id="btn-play">ONE PLAYER</button>
         </div>
 
         <div class="lobby-join-wrap">
           <button class="lobby-btn join-btn" id="btn-join-public" disabled>SEARCHING FOR GAMES...</button>
         </div>
 
-        <div class="lobby-separator">── PRIVATE ROOM ──</div>
+        <div class="lobby-separator">── MULTIPLAYER ──</div>
 
         <div class="lobby-grid">
           <div class="lobby-col">
-            <div class="lobby-section-title">CREATE ROOM</div>
-            <button class="lobby-btn" id="btn-create">CREATE PRIVATE</button>
+            <button class="lobby-btn" id="btn-create">CREATE ROOM</button>
             <div id="room-code-display" class="room-code-display hidden"></div>
           </div>
           <div class="lobby-divider">OR</div>
           <div class="lobby-col">
-            <div class="lobby-section-title">JOIN ROOM</div>
             <input id="code-input" class="lobby-input" placeholder="ENTER CODE" maxlength="6" autocomplete="off" inputmode="text" autocapitalize="characters" />
-            <button class="lobby-btn" id="btn-join">JOIN</button>
+            <button class="lobby-btn" id="btn-join">JOIN ROOM</button>
           </div>
         </div>
 
@@ -68,8 +66,9 @@ export class LobbyUI {
 
         <div id="lobby-countdown-wrap" class="lobby-countdown-wrap hidden">
           <div class="lobby-countdown-label">STARTING IN</div>
-          <div id="lobby-countdown" class="lobby-countdown">20</div>
+          <div id="lobby-countdown" class="lobby-countdown">180</div>
           <div class="lobby-countdown-sub">WAITING FOR PLAYERS</div>
+          <button class="lobby-btn primary host-start-btn hidden" id="btn-host-start">START GAME</button>
         </div>
 
         <div class="lobby-controls-hint">
@@ -102,6 +101,9 @@ export class LobbyUI {
     if (codeInput) codeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._onJoinClick();
       e.stopPropagation();
+    });
+    this._el.querySelector('#btn-host-start').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('lobby:host_start'))
     });
   }
 
@@ -172,7 +174,10 @@ export class LobbyUI {
     if (el) el.textContent = String(Math.max(0, secs));
   }
 
-  showError(msg) { this._showError(msg); }
+  showHostStart() {
+    const btn = this._el.querySelector('#btn-host-start')
+    if (btn) btn.classList.remove('hidden')
+  }
 
   hide() {
     this._el.style.opacity = '0';
@@ -270,6 +275,7 @@ export class LobbyUI {
       }
       @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
       .lobby-countdown-sub { font-size: 12px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8; }
+      .host-start-btn { margin: 16px auto 0; max-width: 220px; font-size: 14px !important; padding: 16px !important; }
       .lobby-solo-wrap { margin: 0 auto 4px; max-width: 280px; }
       .solo-btn { font-size: 13px !important; padding: 16px !important; margin-top: 0 !important; }
       .lobby-separator { font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8; margin: 18px 0 16px; }

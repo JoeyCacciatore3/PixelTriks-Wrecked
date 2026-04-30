@@ -16,7 +16,6 @@ export class SyncManager {
       const { type, payload, from } = e.detail
       if (type === 'move')           this._onMove(payload, from)
       if (type === 'damage')         this._onDamage(payload)
-      if (type === 'elim')           this._onElim(payload)
       if (type === 'barrel_explode') this._onBarrelExplode(payload)
     })
   }
@@ -144,18 +143,8 @@ export class SyncManager {
     if (car) car.applyDamage(amount, attackerSlot)
   }
 
-  _onElim(data) {
-    const { slot } = data
-    const car = this.derby.cars[slot]
-    if (car && !car.eliminated) car._eliminate()
-  }
-
   broadcastDamage(slot, amount, attackerSlot) {
     this.room.broadcast('damage', { slot, amount, attackerSlot })
-  }
-
-  broadcastElim(slot) {
-    this.room.broadcast('elim', { slot })
   }
 
   broadcastBarrelExplode(barrelIdx, pos, radius, damage, attackerSlot) {

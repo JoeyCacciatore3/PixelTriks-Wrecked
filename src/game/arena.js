@@ -12,7 +12,7 @@ function makeQuaternion(yaw, pitch) {
 // Arena dimensions
 export const ARENA_W  = 200;  // X: -100 … +100
 export const ARENA_D  = 250;  // Z: -125 … +125
-export const WALL_H   = 12;
+const WALL_H   = 12;
 
 const FLOOR2_H = 7.0
 const FLOOR2_THICK = 0.4

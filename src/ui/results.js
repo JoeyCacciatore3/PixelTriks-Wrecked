@@ -32,7 +32,7 @@ export class ResultsUI {
     const cars = derby.allCars;
 
     const winnerEl = this._el.querySelector('#results-winner');
-    const localSlot = derby._localSlots?.values().next().value ?? derby.localCar?.slot
+    const localSlot = derby._localSlots?.values().next().value ?? derby.localCar?.slot;
     const localStats = derby.playerStats[localSlot] || { kills: 0, damageDealt: 0, damageTaken: 0 };
     const statsEl = this._el.querySelector('#results-stats');
     const ranksEl = this._el.querySelector('#results-ranks');

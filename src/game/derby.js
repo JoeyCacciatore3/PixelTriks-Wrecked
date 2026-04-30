@@ -156,7 +156,7 @@ export class DerbyGame {
 
   startLobby() {
     this._setState(DerbyState.LOBBY)
-    this._countdown = 20
+    this._countdown = 180
   }
 
   beginMatchCountdown() {

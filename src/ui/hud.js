@@ -6,9 +6,7 @@ export class DerbyHUD {
     this._el        = null
     this._localSlot = -1
     this._bars      = {}
-    this._statusEl  = null
     this._elapsed   = 0
-    this._statusTimer = null
     this._barsContainer = null
     this._lastCd     = -1
 
@@ -25,14 +23,12 @@ export class DerbyHUD {
     this._el.id = 'derby-hud'
     this._el.innerHTML = `
       <div id="hud-health-bars"></div>
-      <div id="hud-status" class="hud-status hidden"></div>
       <div id="hud-countdown" class="hud-countdown hidden"></div>
     `
     document.body.appendChild(this._el)
     this._injectStyles()
 
     this._barsContainer = document.getElementById('hud-health-bars')
-    this._statusEl = document.getElementById('hud-status')
     this._countdownEl = document.getElementById('hud-countdown')
   }
 
@@ -69,14 +65,6 @@ export class DerbyHUD {
       if (car.eliminated) bar.wrap.classList.add('dead')
     }
 
-  }
-
-  showStatus(msg, duration = 2200) {
-    if (!this._statusEl) return;
-    this._statusEl.innerHTML = `<div class="status-text">${msg}</div>`;
-    this._statusEl.classList.remove('hidden');
-    clearTimeout(this._statusTimer);
-    if (duration > 0) this._statusTimer = setTimeout(() => this._statusEl.classList.add('hidden'), duration);
   }
 
   showCountdown(secs) {
@@ -126,20 +114,6 @@ export class DerbyHUD {
       .hb-fill  { height: 100%; transition: width 0.12s ease; }
 
 
-      #hud-status {
-        position: absolute; top: 40%; left: 50%;
-        transform: translateX(-50%);
-      }
-      .status-text {
-        color: #eab308; text-shadow: 3px 3px 0 #ef4444;
-        font-size: clamp(32px, 8vw, 64px); font-weight: 900; letter-spacing: 0.1em;
-        text-transform: uppercase;
-        animation: hud-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
-      }
-      @keyframes hud-pop {
-        from { transform: scale(0.5); opacity: 0; }
-        to   { transform: scale(1.0); opacity: 1; }
-      }
       .hb-row.elim-flash { animation: hb-elim-pulse 0.2s ease-in-out 3; }
       @keyframes hb-elim-pulse {
         0%, 100% { outline-color: transparent; }

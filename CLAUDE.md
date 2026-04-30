@@ -78,11 +78,11 @@ Test after every phase, not just at the end.
 
 ## Architecture Patterns
 
-- **Event-driven communication** — components talk via `window.dispatchEvent(new CustomEvent(...))`. Events: `car:hit` (slot, health, damage, pos, attackerSlot), `car:boost`, `car:land`, `car:eliminated`, `car:skid`, `car:fire` (slot, pos), `barrel:explode` (pos, radius, damage, attackerSlot, barrelIdx), `derby:start`, `derby:winner`, `obstacle:hit`, `lobby:play`, `lobby:join_public`, `room:player_join`, `room:player_leave`, `room:state_change`, `room:msg`.
+- **Event-driven communication** — components talk via `window.dispatchEvent(new CustomEvent(...))`. Events: `car:hit` (slot, health, damage, pos, attackerSlot), `car:boost`, `car:land`, `car:eliminated`, `car:skid`, `car:fire` (slot, pos), `barrel:explode` (pos, radius, damage, attackerSlot, barrelIdx), `derby:start`, `derby:winner`, `obstacle:hit`, `lobby:play`, `lobby:join_public`, `lobby:host_start`, `room:player_join`, `room:player_leave`, `room:state_change`, `room:msg`.
 - **Input interface** — car.js reads from an input object with getters: `throttle`, `brake`, `steerLeft`, `steerRight`, `boostPressed`, `firePressed`, `steerAxis`, `throttleAxis`. Both keyboard Input class and AI drivers produce this same interface. Touch controls must also produce this interface.
 - **Physics-first** — Rapier bodies are authoritative. Meshes sync from physics each frame, not the other way around.
 - **State machine** — DerbyGame.state: LOBBY → COUNTDOWN → PLAYING → FINISHED. Horde mode: 3 AI at start, +1 every 15s, max 8 alive. Defeat = all humans dead.
-- **Drop-in multiplayer** — PLAY starts instant solo as public host (zero delay). Background scan (4s) probes for joinable games; JOIN GAME button highlights green when found. Host computes all collision/bullet/barrel damage, broadcasts to guests. Guests send inputs, receive state snapshots with 100ms interpolation delay. Private rooms available via room codes.
+- **Drop-in multiplayer** — ONE PLAYER starts instant solo as public host (zero delay). Background scan (4s) probes for joinable games via persistent probe peer; JOIN GAME button highlights green when found. Host computes all collision/bullet/barrel damage, broadcasts to guests. Guests send inputs, receive state snapshots with 100ms interpolation delay. CREATE ROOM: public room with shareable code, 3-minute lobby countdown with START GAME button for host to begin early. JOIN ROOM: enter a room code to join a specific game.
 - **Heartbeat/keepalive** — 2s ping/pong, 6s timeout. Dead connections trigger AI takeover of abandoned cars.
 - **Assets** — textures from `public/textures/` (11 PNGs), sounds via Web Audio oscillators/noise (zero audio files).
 
@@ -163,4 +163,4 @@ Pause and ask before:
 ## Implementation Plan
 
 See [PLAN.md](./PLAN.md) for the full phased implementation plan.
-All phases 0-11 complete. See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed code map.
+All phases 0-12 complete. See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed code map.

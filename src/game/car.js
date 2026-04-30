@@ -17,13 +17,13 @@ const GROUND_RAY_DIST  = 0.55
 const LEVEL_TORQUE     = 12
 const LEVEL_SLOPE_MAX  = 0.52
 
-export const BULLET_SPEED     = 60
-export const BULLET_LIFETIME  = 1.5
-export const FIRE_RATE        = 0.2
-export const BULLET_POOL_SIZE = 20
+const BULLET_SPEED     = 60
+const BULLET_LIFETIME  = 1.5
+const FIRE_RATE        = 0.2
+const BULLET_POOL_SIZE = 20
 export const BULLET_DAMAGE    = 20
-export const MAX_AMMO         = 6
-export const AMMO_REGEN       = 1.0  // bullets regenerated per second
+const MAX_AMMO         = 6
+const AMMO_REGEN       = 1.0
 
 const _tmpQ = new THREE.Quaternion()
 const _tmpV = new THREE.Vector3()

@@ -119,9 +119,9 @@
 
 **Public matchmaking (zero infrastructure):**
 - Predictable PeerJS peer IDs (`wy-pub-001` through `wy-pub-010`) as matchmaking pool
-- PLAY button: parallel scan for open public rooms → join first available → fallback to host
-- Solo play = host with no guests yet, open for drop-ins
-- Race condition safe: `found` flag prevents multiple simultaneous joins, orphan peers cleaned up
+- PLAY button: instant solo as public host (zero delay)
+- Background scan uses persistent probe peer (no create/destroy churn)
+- JOIN GAME uses single peer with sequential host scan
 
 **Drop-in mid-game:**
 - Host accepts connections during PLAYING state
@@ -130,74 +130,28 @@
 - Guest receives `room:state_change` with PLAYING → lobby hides, HUD shows
 
 **Lobby UI restructured:**
-- Primary: "PLAY" button → instant solo as public host (zero delay)
+- Primary: "ONE PLAYER" button → instant solo as public host (zero delay)
 - "JOIN GAME" button → disabled by default, highlights green when background scan finds a game
-- Background scan (4s interval) probes `wy-pub-*` IDs via lightweight `checkPublicAvailable()`
-- Secondary: "PRIVATE ROOM" section with create/join codes
-- Events: `lobby:play` (instant solo), `lobby:join_public` (join discovered game)
+- Background scan (4s interval) probes via persistent probe peer
+- Multiplayer section: CREATE ROOM / JOIN ROOM with shareable room codes
+- Events: `lobby:play` (instant solo), `lobby:join_public` (join discovered game), `lobby:host_start` (host starts early)
 
-**Private rooms unchanged** — existing create/join flow with random codes preserved
+**Public rooms — 3-minute lobby + host start:**
+- CREATE ROOM → public room with shareable code, 180-second countdown with slot grid
+- Host sees START GAME button to begin early at any time
+- JOIN ROOM → enter code to join a specific room
+- `lobby:host_start` event skips countdown, spawns AI, begins match
 
 ---
 
 ## Completed Phases — Audit Issues
 
 ### Phase 5 — Code Cleanup & Performance ✅ COMPLETE
-
-**5.1 Dead code removal**
-| File | What | Why |
-|---|---|---|
-| effects.js:197 | `car:damage` event listener | Event is NEVER dispatched anywhere. Dead code. |
-| derby.js:269 | `aliveCars` getter with `.filter()` | Called from hud.js every frame via `derby.aliveCars`. Allocates 60 arrays/sec. |
-| derby.js:270 | `allCars` getter with `.filter(Boolean)` | Called from main.js every frame. Allocates 60 arrays/sec. |
-
-**Fix:** Remove `car:damage` listener. Replace `aliveCars`/`allCars` getters with cached arrays that update on car add/eliminate events. Or change call sites to iterate `this.cars` with null checks.
-
-**5.2 Deduplicate bomb explosion logic**
-`derby.js:_checkBombHits()` (lines 206-241) and `_handleBombTimer()` (lines 244-266) share ~90% identical code: distance check, falloff damage, knockback impulse, event dispatch.
-
-**Fix:** Extract `_applyExplosion(pos, radius, damage, excludeSlot)`:
-```js
-_applyExplosion(pos, radius, damage, excludeSlot = -1) {
-  for (const target of this.cars) {
-    if (!target || target.eliminated) continue
-    if (excludeSlot >= 0 && target.slot === excludeSlot) continue
-    const tp = target.position
-    const d = Math.hypot(pos.x - tp.x, pos.y - tp.y, pos.z - tp.z)
-    if (d >= radius) continue
-    target.applyDamage(damage * (1 - d / radius))
-    const kx = tp.x - pos.x, kz = tp.z - pos.z
-    const len = Math.hypot(kx, kz) || 1
-    target._body.applyImpulse({ x: (kx/len)*15, y: 8, z: (kz/len)*15 }, true)
-  }
-  window.dispatchEvent(new CustomEvent('car:bomb_explode', { detail: { pos, slot: excludeSlot } }))
-}
-```
-
-**5.3 Share bomb materials across cars**
-car.js:164 — `bombMat.clone()` creates 12 unique materials (4 cars x 3 bombs). All look identical per car. One material per car suffices.
-
-**Fix:** Remove `.clone()`, use `bombMat` directly for all 3 bombs per car. 12 materials → 4.
-
-**5.4 Fix `onStateChange` overwrite in main.js**
-main.js:102 — multiplayer path reassigns `derby.onStateChange`, wiping the solo handler from line 56. Both paths need PLAYING/FINISHED transitions.
-
-**Fix:** Replace callback pattern with event listener:
-```js
-// In DerbyGame constructor:
-window.addEventListener('derby:state', (e) => { ... })
-// Or merge both handlers into one that checks room.isHost
-```
-
-**5.5 Cache HUD rank calculation**
-hud.js:92 — `derby.aliveCars` sorts a copy every frame for rank display. Wasteful — rank only changes on `car:hit` or `car:eliminated`.
-
-**Fix:** Listen to `car:hit` and `car:eliminated` events, recalculate rank only then. Cache `_localRank` and `_aliveCount`.
-
-**5.6 Pool debris meshes in effects.js**
-effects.js:247-270 — elimination creates 4 new BoxGeometry + 4 MeshBasicMaterial each time. At most 4 eliminations per match = 16 allocations, not critical but messy.
-
-**Fix:** Pre-pool 4 debris mesh objects, reuse on each elimination. Or accept the cost since eliminations are rare events.
+- Dead code removed (`car:damage` listener, per-frame `.filter()` allocations)
+- `aliveCars`/`allCars` getters cached (rebuild only on car add/eliminate)
+- Bomb code fully removed (replaced by machine gun in Phase 9)
+- `_applyExplosion()` extracted as shared explosion handler
+- HUD rank calculation cached (recalculates only on `car:hit`/`car:eliminated`)
 
 ---
 
@@ -366,33 +320,33 @@ Text notifications when a car is eliminated: "CYAN wrecked MAGENTA!" — appears
 
 ```
 src/
-  main.js          — boot, game loop, state wiring (213 lines)
+  main.js          — boot, game loop, state wiring (295 lines)
   game/
-    engine.js      — Three.js renderer, scene, lights, skybox (98 lines)
-    physics.js     — Rapier world, fixed timestep, body factories (111 lines)
-    arena.js       — floor, walls (convex hull wedges), ramps, platforms, portal, half-pipes (776 lines)
-    car.js         — car mesh + physics + controls + machine gun + hit flash (474 lines)
-    derby.js       — horde mode state machine, co-op damage, AI wave spawning (412 lines)
+    engine.js      — Three.js renderer, scene, lights, skybox (92 lines)
+    physics.js     — Rapier world, fixed timestep, body factories (122 lines)
+    arena.js       — floor, walls (convex hull wedges), ramps, platforms, portal, half-pipes (1019 lines)
+    car.js         — car mesh + physics + controls + machine gun + hit flash (500 lines)
+    derby.js       — horde mode state machine, co-op damage, AI wave spawning, health pickups (514 lines)
     ai.js          — AI driver behavior, humans-only targeting (164 lines)
-    obstacles.js   — explosive barrels (1 HP, 200% size), InstancedMesh (147 lines)
-    effects.js     — particles, skid marks, damage numbers, speed lines, muzzle flash (327 lines)
+    obstacles.js   — explosive barrels (1 HP, 200% size), InstancedMesh (149 lines)
+    effects.js     — particles, skid marks, damage numbers, speed lines, muzzle flash (374 lines)
     camera.js      — chase camera with shake + snapTo (109 lines)
     audio.js       — Web Audio procedural SFX, 13 SFX + engine loop (261 lines)
     textures.js    — TextureLoader wrapper with cache + unique clones (68 lines)
-    input.js       — keyboard + touch input merged (235 lines)
+    input.js       — keyboard + touch input merged (304 lines)
   net/
-    room.js        — PeerJS room management, star topology, heartbeat (200 lines)
-    sync.js        — network state sync at 20Hz, snapshot interpolation (159 lines)
+    room.js        — PeerJS room management, persistent probe peer, private rooms (3-min lobby + host start), heartbeat (321 lines)
+    sync.js        — network state sync at 20Hz, snapshot interpolation (170 lines)
   ui/
-    lobby.js       — lobby screen with solo/multiplayer (274 lines)
-    hud.js         — health bars, timer, speed, kill counter, countdown (228 lines)
-    results.js     — match results, stat boxes, leaderboard table (163 lines)
-    minimap.js     — radar-style canvas minimap, desktop only (107 lines)
+    lobby.js       — lobby screen with solo/multiplayer, START GAME button (315 lines)
+    hud.js         — health bars, kill counter, countdown (167 lines)
+    results.js     — match results, stat boxes, leaderboard table (165 lines)
+    minimap.js     — radar-style canvas minimap (103 lines)
     killfeed.js    — elimination notifications with attribution (58 lines)
   util/
     detect.js      — mobile/portrait detection (4 lines)
 ```
-**Total: 4588 lines across 21 files**
+**Total: 5274 lines across 21 files**
 
 **Event bus (window CustomEvent):**
 - `car:hit` — collision damage applied (slot, health, damage, pos, attackerSlot)
@@ -406,6 +360,7 @@ src/
 - `derby:start` — match began
 - `derby:winner` — match ended (slot)
 - `lobby:play` — solo button clicked
+- `lobby:host_start` — host start button clicked (skips lobby countdown)
 - `room:player_join` — player joined room (slot, playerId)
 - `room:player_leave` — player left room (slot)
 - `room:state_change` — room state changed (state)

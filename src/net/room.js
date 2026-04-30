@@ -39,119 +39,95 @@ export class RoomManager {
   }
 
   async checkPublicAvailable() {
-    const CHECK_TIMEOUT = 2000
-    const tryOne = async (i) => {
+    const CHECK_TIMEOUT = 2500
+    if (!this._probePeer || this._probePeer.destroyed) {
+      this._probePeer = new Peer()
+      await new Promise((resolve, reject) => {
+        this._probePeer.on('open', resolve)
+        this._probePeer.on('error', reject)
+        setTimeout(() => reject(new Error('timeout')), CHECK_TIMEOUT)
+      })
+    }
+
+    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
       const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
-      const peer = new Peer()
       try {
-        await new Promise((resolve, reject) => {
-          peer.on('open', resolve)
-          peer.on('error', reject)
-          setTimeout(() => reject(new Error('timeout')), CHECK_TIMEOUT)
-        })
-        const conn = peer.connect(hostId)
+        const conn = this._probePeer.connect(hostId)
         const ok = await new Promise((resolve) => {
           conn.on('open', () => resolve(true))
           conn.on('error', () => resolve(false))
           setTimeout(() => resolve(false), CHECK_TIMEOUT)
         })
-        if (ok) conn.close()
-        return ok
-      } finally {
-        peer.destroy()
-      }
-    }
-    const BATCH = 3
-    for (let start = 0; start < PUBLIC_POOL_SIZE; start += BATCH) {
-      const batch = Array.from(
-        { length: Math.min(BATCH, PUBLIC_POOL_SIZE - start) },
-        (_, j) => tryOne(start + j + 1)
-      )
-      const results = await Promise.allSettled(batch)
-      if (results.some(r => r.status === 'fulfilled' && r.value === true)) return true
+        if (ok) { conn.close(); return true }
+      } catch (_) {}
     }
     return false
   }
 
+  destroyProbe() {
+    if (this._probePeer && !this._probePeer.destroyed) {
+      this._probePeer.destroy()
+      this._probePeer = null
+    }
+  }
+
   async findAndJoinPublic() {
-    let found = false
-    const peers = []
+    this.destroyProbe()
 
-    const tryOne = async (i) => {
-      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
-      const peer = new Peer()
-      peers.push(peer)
+    this._peer = new Peer()
+    const myId = await new Promise((resolve, reject) => {
+      this._peer.on('open', resolve)
+      this._peer.on('error', reject)
+      setTimeout(() => reject(new Error('timeout')), CONNECT_TIMEOUT)
+    })
 
-      const myId = await new Promise((resolve, reject) => {
-        peer.on('open', resolve)
-        peer.on('error', reject)
-        setTimeout(() => reject(new Error('timeout')), CONNECT_TIMEOUT)
-      })
-
-      if (found) { peer.destroy(); return null }
-
-      const conn = peer.connect(hostId)
-      const ok = await new Promise((resolve) => {
-        conn.on('open', () => resolve(true))
-        conn.on('error', () => resolve(false))
-        setTimeout(() => resolve(false), CONNECT_TIMEOUT)
-      })
-
-      if (!ok || found) { peer.destroy(); return null }
-
-      const firstMsg = await new Promise((resolve) => {
-        conn.on('data', function handler(msg) {
-          conn.off('data', handler)
-          resolve(msg)
-        })
-        setTimeout(() => resolve(null), CONNECT_TIMEOUT)
-      })
-
-      if (!firstMsg || firstMsg.type === 'room_full' || found) {
-        peer.destroy()
-        return null
-      }
-
-      found = true
-      this._peer = peer
-      this.myId = myId
-      this.isHost = false
-      this._conns[0] = conn
-      conn.on('data', (msg) => this._onData(msg, 0))
-      conn.on('close', () => this._handleDisconnect(0))
-      this._lastPong[0] = Date.now()
-      this._startHeartbeat()
-
-      if (firstMsg.type === 'assign_slot') {
-        this.mySlot = firstMsg.slot
-        this._slots[firstMsg.slot] = this.myId
-        window.dispatchEvent(new CustomEvent('room:player_join', {
-          detail: { slot: firstMsg.slot, playerId: this.myId }
-        }))
-        if (firstMsg.gameState && firstMsg.gameState !== 'LOBBY') {
-          window.dispatchEvent(new CustomEvent('room:state_change', {
-            detail: { state: firstMsg.gameState }
-          }))
-        }
-      }
-
-      return hostId
-    }
-
-    const attempts = []
     for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
-      attempts.push(tryOne(i).catch(() => null))
+      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
+      try {
+        const conn = this._peer.connect(hostId)
+        const ok = await new Promise((resolve) => {
+          conn.on('open', () => resolve(true))
+          conn.on('error', () => resolve(false))
+          setTimeout(() => resolve(false), CONNECT_TIMEOUT)
+        })
+        if (!ok) continue
+
+        const firstMsg = await new Promise((resolve) => {
+          conn.on('data', function handler(msg) {
+            conn.off('data', handler)
+            resolve(msg)
+          })
+          setTimeout(() => resolve(null), CONNECT_TIMEOUT)
+        })
+
+        if (!firstMsg || firstMsg.type === 'room_full') continue
+
+        this.myId = myId
+        this.isHost = false
+        this._conns[0] = conn
+        conn.on('data', (msg) => this._onData(msg, 0))
+        conn.on('close', () => this._handleDisconnect(0))
+        this._lastPong[0] = Date.now()
+        this._startHeartbeat()
+
+        if (firstMsg.type === 'assign_slot') {
+          this.mySlot = firstMsg.slot
+          this._slots[firstMsg.slot] = this.myId
+          window.dispatchEvent(new CustomEvent('room:player_join', {
+            detail: { slot: firstMsg.slot, playerId: this.myId }
+          }))
+          if (firstMsg.gameState && firstMsg.gameState !== 'LOBBY') {
+            window.dispatchEvent(new CustomEvent('room:state_change', {
+              detail: { state: firstMsg.gameState }
+            }))
+          }
+        }
+        return hostId
+      } catch (_) {}
     }
 
-    const results = await Promise.allSettled(attempts)
-
-    for (const p of peers) {
-      if (p !== this._peer && !p.destroyed) p.destroy()
-    }
-
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value) return r.value
-    }
+    this._peer.destroy()
+    this._peer = null
     return null
   }
 
@@ -337,10 +313,9 @@ export class RoomManager {
       try { conn.close() } catch (_) {}
     }
     if (this._peer) try { this._peer.destroy() } catch (_) {}
+    this.destroyProbe()
   }
 
   setGameState(state) { this._gameState = state }
 
-  get filledSlots()  { return Object.keys(this._slots).map(Number).sort(); }
-  get playerCount()  { return Object.keys(this._slots).length; }
 }

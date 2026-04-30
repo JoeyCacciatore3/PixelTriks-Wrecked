@@ -4,32 +4,32 @@
 
 | File | Lines | Purpose |
 |---|---|---|
-| `src/main.js` | 283 | Boot sequence, game loop, state wiring, module instantiation, background matchmaking scan, portal auto-start |
+| `src/main.js` | 295 | Boot sequence, game loop, state wiring, module instantiation, background matchmaking scan, portal auto-start |
 | **Game** | | |
-| `src/game/arena.js` | 776 | Arena geometry: floor, walls (convex hull wedges), death ramps, platforms, half-pipe corners, InstancedMesh stumps/trims |
-| `src/game/car.js` | 474 | Car mesh (body, cabin, bumpers, wheels, underglow), machine gun (InstancedMesh bullet pool), hit flash, physics body, controls, damage |
-| `src/game/effects.js` | 327 | Particle system, skid marks, damage numbers, speed lines, debris, muzzle flash, barrel explosions |
-| `src/game/derby.js` | 412 | Horde mode state machine, co-op damage rules, AI wave spawning, host-auth collision/bullet/barrel damage |
-| `src/game/audio.js` | 262 | Web Audio procedural SFX: 13 SFX (hit, boost, land, eliminate, gunfire, barrel_explode, barrel_hit, derby_start, winner, countdown_beep, countdown_go, low_health) + engine loop |
-| `src/game/input.js` | 235 | Keyboard + touch input: virtual joystick, action buttons, unified input interface |
+| `src/game/arena.js` | 1019 | Arena geometry: floor, walls (convex hull wedges), death ramps, platforms, half-pipe corners, InstancedMesh stumps/trims |
+| `src/game/car.js` | 500 | Car mesh (body, cabin, bumpers, wheels, underglow), machine gun (InstancedMesh bullet pool), hit flash, physics body, controls, damage |
+| `src/game/effects.js` | 374 | Particle system, skid marks, damage numbers, speed lines, debris, muzzle flash, barrel explosions |
+| `src/game/derby.js` | 514 | Horde mode state machine, co-op damage rules, AI wave spawning, host-auth collision/bullet/barrel damage, health pickups |
+| `src/game/audio.js` | 261 | Web Audio procedural SFX: 13 SFX (hit, boost, land, eliminate, gunfire, barrel_explode, barrel_hit, derby_start, winner, countdown_beep, countdown_go, low_health) + engine loop |
+| `src/game/input.js` | 304 | Keyboard + touch input: virtual joystick, action buttons, unified input interface |
 | `src/game/ai.js` | 164 | AI drivers: target selection (humans only), chase, stuck recovery, auto-fire |
-| `src/game/physics.js` | 111 | Rapier WASM init, fixed timestep (1/60s, max 4 substeps), body factories, raycast |
-| `src/game/obstacles.js` | 148 | 22 explosive barrels (1 HP, 200% size), InstancedMesh, respawn system |
+| `src/game/physics.js` | 122 | Rapier WASM init, fixed timestep (1/60s, max 4 substeps), body factories, raycast |
+| `src/game/obstacles.js` | 149 | 22 explosive barrels (1 HP, 200% size), InstancedMesh, respawn system |
 | `src/game/camera.js` | 109 | Chase camera with trail smoothing, screen shake, snapTo (pooled vectors) |
 | `src/game/textures.js` | 68 | TextureLoader wrapper with cache + unique clones |
-| `src/game/engine.js` | 99 | Three.js renderer, scene, lights, skybox, ground mesh. Mobile: no shadows, no antialias, boosted ambient, reduced fog |
+| `src/game/engine.js` | 92 | Three.js renderer, scene, lights, skybox, ground mesh. Mobile: no shadows, no antialias, boosted ambient, reduced fog |
 | **Networking** | | |
-| `src/net/room.js` | 338 | PeerJS WebRTC room: public matchmaking (predictable IDs), availability check, private rooms, star topology, heartbeat, drop-in support |
-| `src/net/sync.js` | 180 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay, barrel explosion sync |
+| `src/net/room.js` | 321 | PeerJS WebRTC room: public matchmaking (persistent probe peer), public rooms (3-min lobby + host start), star topology, heartbeat |
+| `src/net/sync.js` | 170 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay, barrel explosion sync |
 | **UI** | | |
-| `src/ui/lobby.js` | 303 | Lobby screen: instant PLAY, JOIN GAME (background scan), private rooms, slot grid, portal link |
-| `src/ui/hud.js` | 228 | Dynamic health bars, timer, speed, kill counter, countdown overlay |
-| `src/ui/results.js` | 164 | Match results: stat boxes, leaderboard table, play again, portal link |
-| `src/ui/minimap.js` | 107 | Radar-style canvas minimap: car dots, local triangle, arena outline, top-right, 120px |
+| `src/ui/lobby.js` | 313 | Lobby screen: ONE PLAYER (instant solo), JOIN GAME (background scan), CREATE ROOM (3-min countdown + START GAME), JOIN ROOM (code entry), slot grid, portal link |
+| `src/ui/hud.js` | 167 | Dynamic health bars, kill counter, countdown overlay |
+| `src/ui/results.js` | 165 | Match results: stat boxes, leaderboard table, play again, portal link |
+| `src/ui/minimap.js` | 103 | Radar-style canvas minimap: car dots, local triangle, arena outline, top-right |
 | `src/ui/killfeed.js` | 58 | Elimination notifications with damage attribution (auto-fade) |
 | **Util** | | |
 | `src/util/detect.js` | 4 | `isMobile` / `isPortrait` detection |
-| **Total** | **4677** | |
+| **Total** | **5274** | |
 
 ## Boot Sequence
 
@@ -90,6 +90,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 | `derby:winner` | slot | derby.js `update()` | audio |
 | `lobby:play` | — | lobby.js | main.js (instant solo) |
 | `lobby:join_public` | — | lobby.js | main.js (join discovered game) |
+| `lobby:host_start` | — | lobby.js | main.js (skip countdown, start match) |
 | `room:player_join` | slot, playerId | room.js | main.js |
 | `room:player_leave` | slot | room.js | main.js (AI takeover) |
 | `room:state_change` | state | room.js | main.js |
@@ -99,7 +100,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 
 **Transport:** PeerJS WebRTC DataChannel (unreliable for lower latency)
 **Topology:** Star (host relays to all guests)
-**Matchmaking:** PLAY starts instant solo + registers as public host (`wy-pub-001` through `wy-pub-010`). Background scan (4s interval) probes for available public games; JOIN GAME button highlights green when found. Joining uses parallel scan with race-safe `found` flag.
+**Matchmaking:** ONE PLAYER starts instant solo + registers as public host (`wy-pub-001` through `wy-pub-010`). Background scan (4s interval) probes via persistent probe peer; JOIN GAME button highlights green when found. Joining uses sequential scan with single peer. CREATE ROOM: public room with shareable code, 3-minute lobby countdown with host START GAME button. JOIN ROOM: enter code to join a specific room.
 **Tick rate:** 20Hz send, 60Hz interpolated render
 
 | Message Type | Direction | Payload |
@@ -107,7 +108,6 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 | `assign_slot` | Host → Guest | slot |
 | `move` | Broadcast | slot, pos, rot, vel, hp |
 | `damage` | Host → All | slot, amount, attackerSlot |
-| `elim` | Host → All | slot |
 | `barrel_explode` | Host → All | barrelIdx, pos, radius, damage, attackerSlot |
 | `state` | Host → All | state (COUNTDOWN) |
 | `ping` | Bidirectional | t |

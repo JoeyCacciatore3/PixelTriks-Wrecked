@@ -264,7 +264,7 @@ export class Input {
       this._buttonPointers.delete(e.pointerId)
       if (t === 'fire') this._touchFire = false
       if (t === 'jump') this._touchJump = false
-      el.style.opacity = '0.6'
+      el.style.opacity = '0.7'
       el.style.transform = ''
     }
     el.addEventListener('pointerup', up)
@@ -285,10 +285,6 @@ export class Input {
     return this._keys.has('Enter') || this._touchFire
   }
 
-  get mutePressed() {
-    return this._keys.has('KeyM') && !this._prev.has('KeyM')
-  }
-
   get steerAxis() {
     const kb = (this.steerRight ? 1 : 0) - (this.steerLeft ? 1 : 0)
     return Math.abs(this._touchSteer) > 0.15 ? this._touchSteer : kb
@@ -305,14 +301,4 @@ export class Input {
     this._keys.forEach(k => this._prev.add(k))
   }
 
-  dispose() {
-    window.removeEventListener('keydown', this._onKeyDown)
-    window.removeEventListener('keyup',   this._onKeyUp)
-    if (this._touchEls) {
-      this._touchEls.container.remove()
-      if (this._touchEls.orientOverlay) this._touchEls.orientOverlay.remove()
-      if (this._touchEls.fsBtn) this._touchEls.fsBtn.remove()
-      this._touchEls = null
-    }
-  }
 }
