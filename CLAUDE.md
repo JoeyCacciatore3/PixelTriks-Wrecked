@@ -94,6 +94,22 @@ Test after every phase, not just at the end.
 - AudioContext needs user gesture to unlock (already handled via pointerdown/keydown listeners)
 - Rapier WASM init is async — scene must render before physics loads
 
+## Mobile Optimizations
+
+- Shadows disabled on mobile (shadow map + castShadow/receiveShadow all off)
+- Antialias disabled on mobile (hardware MSAA too expensive)
+- Ambient light boosted to 1.2 (vs 0.8 desktop) to compensate for no shadows
+- Fog density reduced (0.004 vs 0.006) for better distance visibility
+- Particle pool: 40 (vs 160), skid marks: 20 (vs 80), damage numbers: 12 (vs 32)
+- All particle burst counts halved on mobile via `_burst()` wrapper
+- Dynamic lights (explosion/elimination flashes) skipped on mobile
+- Debris meshes (per-elimination box fragments) skipped on mobile
+- Explosion sprites pooled (3 on mobile, 6 on desktop) — no per-spawn allocation
+- Speed lines disabled on mobile (already was)
+- Minimap scaled to 80px (vs 120px desktop)
+- HUD health bars: only human players shown on mobile (no AI bars)
+- Lobby scrollable on mobile portrait (`overflow-y: auto`)
+
 ## Development Methodology
 
 ### Research Before Implementation

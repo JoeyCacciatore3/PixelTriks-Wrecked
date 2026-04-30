@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { barrelTexture } from './textures.js'
 import { SPAWN_POINTS } from './arena.js'
+import { isMobile } from '../util/detect.js'
 
 const BARREL_COUNT       = 22
 const BARREL_HP          = 1
@@ -53,7 +54,7 @@ export class Obstacles {
     })
     const geom = new THREE.CylinderGeometry(0.84, 0.90, 2.0, 10)
     this._instancedMesh = new THREE.InstancedMesh(geom, mat, positions.length)
-    this._instancedMesh.castShadow = true
+    this._instancedMesh.castShadow = !isMobile
     scene.add(this._instancedMesh)
 
     for (let i = 0; i < positions.length; i++) {

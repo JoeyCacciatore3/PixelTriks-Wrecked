@@ -1,9 +1,7 @@
 import { CAR_COLORS } from '../game/car.js'
+import { isMobile } from '../util/detect.js'
 
-// Player-centered radar minimap.
-// MAP_SIZE is the canvas size in pixels. MAP_RANGE is the world-space radius (m)
-// that fits inside the canvas — anything further than this gets clamped to the rim.
-const MAP_SIZE  = 120
+const MAP_SIZE  = isMobile ? 80 : 120
 const MAP_RANGE = 90
 const SCALE     = (MAP_SIZE / 2) / MAP_RANGE
 const ARENA_W   = 200

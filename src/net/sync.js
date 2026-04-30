@@ -117,12 +117,12 @@ export class SyncManager {
     if (dot < 0) { dot = -dot; bx = -bx; by = -by; bz = -bz; bw = -bw }
 
     if (dot > 0.9995) {
-      return {
-        x: a.x + (bx - a.x) * t,
-        y: a.y + (by - a.y) * t,
-        z: a.z + (bz - a.z) * t,
-        w: a.w + (bw - a.w) * t
-      }
+      const rx = a.x + (bx - a.x) * t
+      const ry = a.y + (by - a.y) * t
+      const rz = a.z + (bz - a.z) * t
+      const rw = a.w + (bw - a.w) * t
+      const len = Math.sqrt(rx * rx + ry * ry + rz * rz + rw * rw) || 1
+      return { x: rx / len, y: ry / len, z: rz / len, w: rw / len }
     }
 
     const theta = Math.acos(dot)

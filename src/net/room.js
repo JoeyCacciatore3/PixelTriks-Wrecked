@@ -21,7 +21,6 @@ export class RoomManager {
     this.isHost    = false
     this.isPublic  = false
     this._slots    = {}
-    this._nextSlot = 1
     this._lastPong = {}
     this._heartbeatId = null
   }
@@ -62,10 +61,16 @@ export class RoomManager {
         peer.destroy()
       }
     }
-    const results = await Promise.allSettled(
-      Array.from({ length: PUBLIC_POOL_SIZE }, (_, i) => tryOne(i + 1))
-    )
-    return results.some(r => r.status === 'fulfilled' && r.value === true)
+    const BATCH = 3
+    for (let start = 0; start < PUBLIC_POOL_SIZE; start += BATCH) {
+      const batch = Array.from(
+        { length: Math.min(BATCH, PUBLIC_POOL_SIZE - start) },
+        (_, j) => tryOne(start + j + 1)
+      )
+      const results = await Promise.allSettled(batch)
+      if (results.some(r => r.status === 'fulfilled' && r.value === true)) return true
+    }
+    return false
   }
 
   async findAndJoinPublic() {
@@ -191,8 +196,11 @@ export class RoomManager {
   }
 
   _hostOnConn(conn) {
-    const slot = this._nextSlot++;
-    if (slot > 3) {
+    let slot = -1
+    for (let i = 1; i <= 3; i++) {
+      if (!this._slots[i]) { slot = i; break }
+    }
+    if (slot === -1) {
       try { conn.send({ type: 'room_full' }) } catch (_) {}
       conn.close()
       return

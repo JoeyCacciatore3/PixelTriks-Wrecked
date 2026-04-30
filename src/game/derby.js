@@ -254,8 +254,9 @@ export class DerbyGame {
         if (!car || car.eliminated) continue
         const p = car.position
         if (p.y < -5 || p.y > 50 || Math.abs(p.x) > 125 || Math.abs(p.z) > 150) {
-          car.applyDamage(car.health)
-          if (this._sync) this._sync.broadcastDamage(car.slot, car.health)
+          const oobDamage = car.health
+          car.applyDamage(oobDamage)
+          if (this._sync) this._sync.broadcastDamage(car.slot, oobDamage, -1)
         }
       }
       this._checkCarCollisions()

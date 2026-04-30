@@ -127,7 +127,7 @@ SOUNDS.boost = (ctx, out) => {
   const f = ctx.createBiquadFilter(); f.type = 'bandpass'
   f.frequency.setValueAtTime(400, t); f.frequency.exponentialRampToValueAtTime(2400, t + 0.4); f.Q.value = 1.2
   const g = ctx.createGain(); g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.45)
-  ns.connect(f); f.connect(g); g.connect(out); ns.start(t)
+  ns.connect(f); f.connect(g); g.connect(out); ns.start(t); ns.stop(t + 0.45)
   const osc = ctx.createOscillator(); osc.type = 'sawtooth'
   osc.frequency.setValueAtTime(120, t); osc.frequency.exponentialRampToValueAtTime(360, t + 0.35)
   const og = ctx.createGain(); og.gain.setValueAtTime(0.18, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.4)

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { carBodyTexture } from './textures.js';
+import { isMobile } from '../util/detect.js';
 
 export const CAR_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#eab308'];
 export const CAR_NAMES  = ['P1', 'P2', 'P3', 'P4'];
@@ -104,7 +105,7 @@ export class Car {
     });
     const body = new THREE.Mesh(bodyGeom, this._bodyMat);
     body.position.y = 0.1;
-    body.castShadow = true;
+    body.castShadow = !isMobile;
     this._group.add(body);
     this._bodyMesh = body;
 
@@ -117,7 +118,7 @@ export class Car {
     });
     const cabin = new THREE.Mesh(cabinGeom, this._cabinMat);
     cabin.position.set(0, 0.57, -0.12);
-    cabin.castShadow = true;
+    cabin.castShadow = !isMobile;
     this._group.add(cabin);
 
     // Front + rear bumpers
@@ -322,7 +323,7 @@ export class Car {
 
     if (this._squashTimer > 0) {
       this._squashTimer -= dt
-      this._group.scale.y = this._squashTimer > 0 ? 0.85 : 1.0
+      this._group.scale.y = this._squashTimer > 0 ? 1.25 * 0.85 : 1.25
     }
 
     if (this._numMesh) {

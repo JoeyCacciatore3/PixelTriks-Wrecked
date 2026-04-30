@@ -182,10 +182,11 @@ class SpeedLines {
 
 export class Effects {
   constructor(scene, camera) {
-    this.particles = new ParticleSystem(scene, isMobile ? 80 : 160);
-    this.skidMarks = new SkidMarkSystem(scene, isMobile ? 40 : 80);
+    this._mobile = isMobile
+    this.particles = new ParticleSystem(scene, isMobile ? 40 : 160);
+    this.skidMarks = new SkidMarkSystem(scene, isMobile ? 20 : 80);
     this.camera    = camera;
-    this.damageNumbers = new DamageNumbers(scene, camera.camera, 32);
+    this.damageNumbers = new DamageNumbers(scene, camera.camera, isMobile ? 12 : 32);
     this.flashEl   = document.getElementById('flash-overlay');
     this._speedLines = isMobile ? null : new SpeedLines();
 
@@ -203,27 +204,46 @@ export class Effects {
 
   setLocalSlot(slot) { this._localSlot = slot }
 
+  _initExplosionPool() {
+    const POOL = this._mobile ? 3 : 6
+    this._explosionPool = []
+    for (let i = 0; i < POOL; i++) {
+      const mat = new THREE.SpriteMaterial({ map: _explosionTex, transparent: true, opacity: 0, depthWrite: false })
+      const sprite = new THREE.Sprite(mat)
+      sprite.visible = false
+      this._scene.add(sprite)
+      this._explosionPool.push({ sprite, mat, active: false })
+    }
+  }
+
   _spawnExplosionSprite(pos, scale = 6, duration = 500) {
-    const mat = new THREE.SpriteMaterial({ map: _explosionTex, transparent: true, opacity: 1, depthWrite: false })
-    const sprite = new THREE.Sprite(mat)
-    sprite.position.set(pos.x, pos.y + 1.5, pos.z)
-    sprite.scale.set(0.5, 0.5, 0.5)
-    this._scene.add(sprite)
+    if (!this._explosionPool) this._initExplosionPool()
+    const entry = this._explosionPool.find(e => !e.active)
+    if (!entry) return
+    entry.active = true
+    entry.sprite.visible = true
+    entry.sprite.position.set(pos.x, pos.y + 1.5, pos.z)
+    entry.sprite.scale.set(0.5, 0.5, 0.5)
+    entry.mat.opacity = 1
     const start = performance.now()
     const animate = () => {
       const t = (performance.now() - start) / duration
-      if (t >= 1) { this._scene.remove(sprite); mat.dispose(); return }
+      if (t >= 1) { entry.sprite.visible = false; entry.active = false; return }
       const s = 0.5 + (scale - 0.5) * Math.min(1, t * 3)
-      sprite.scale.set(s, s, s)
-      mat.opacity = t < 0.4 ? 1 : 1 - (t - 0.4) / 0.6
+      entry.sprite.scale.set(s, s, s)
+      entry.mat.opacity = t < 0.4 ? 1 : 1 - (t - 0.4) / 0.6
       requestAnimationFrame(animate)
     }
     requestAnimationFrame(animate)
   }
 
+  _burst(pos, count, color, opts) {
+    this.particles.burst(pos, this._mobile ? Math.ceil(count * 0.5) : count, color, opts)
+  }
+
   _onHit(d) {
     const damage = d?.damage ?? 10;
-    this.particles.burst(d?.pos, 16, 0xff3300, { speed: 10, lifetime: 0.5 });
+    this._burst(d?.pos, 16, 0xff3300, { speed: 10, lifetime: 0.5 });
     if (d?.pos) {
       this.damageNumbers.spawn(d.pos, damage);
       this._spawnExplosionSprite(d.pos, 1.2, 300)
@@ -235,19 +255,19 @@ export class Effects {
   }
 
   _onBoost(d) {
-    this.particles.burst(d?.pos, 14, 0x44ddff, { speed: 8, lifetime: 0.35, gravity: 0 });
-    this.particles.burst(d?.pos, 8, 0xffffff, { speed: 5, lifetime: 0.25, gravity: 0 });
+    this._burst(d?.pos, 14, 0x44ddff, { speed: 8, lifetime: 0.35, gravity: 0 });
+    this._burst(d?.pos, 8, 0xffffff, { speed: 5, lifetime: 0.25, gravity: 0 });
     if (d?.slot === this._localSlot) this.camera.shake(0.18);
   }
 
   _onEliminated(d) {
     if (d?.pos) this._spawnExplosionSprite(d.pos, 10, 700)
-    this.particles.burst(d?.pos, 40, 0xffaa00, { speed: 14, lifetime: 1.0, upBias: 5 });
-    this.particles.burst(d?.pos, 20, 0xffff00, { speed: 8,  lifetime: 0.8 });
+    this._burst(d?.pos, 40, 0xffaa00, { speed: 14, lifetime: 1.0, upBias: 5 });
+    this._burst(d?.pos, 20, 0xffff00, { speed: 8,  lifetime: 0.8 });
     this.camera.shake(0.6);
     this._flash(0.45);
 
-    if (d?.pos) {
+    if (d?.pos && !this._mobile) {
       const light = new THREE.PointLight(0xffaa00, 5, 30)
       light.position.set(d.pos.x, d.pos.y + 1, d.pos.z)
       this._scene.add(light)
@@ -290,7 +310,7 @@ export class Effects {
   }
 
   _onBarrelHit(d) {
-    this.particles.burst(d?.pos, 12, 0xff8800, { speed: 8, lifetime: 0.45 });
+    this._burst(d?.pos, 12, 0xff8800, { speed: 8, lifetime: 0.45 });
     this.camera.shake(0.14);
   }
 
@@ -302,7 +322,7 @@ export class Effects {
 
   _onLand(d) {
     const intensity = Math.min(1, (d.fallSpeed || 0) / 15)
-    this.particles.burst(d?.pos, 20, 0xfbbf24, { speed: 6 * intensity + 3, lifetime: 0.7, gravity: -12, upBias: 3 })
+    this._burst(d?.pos, 20, 0xfbbf24, { speed: 6 * intensity + 3, lifetime: 0.7, gravity: -12, upBias: 3 })
     this.camera.shake(0.15 + intensity * 0.4)
   }
 
@@ -310,29 +330,31 @@ export class Effects {
     if (!d?.pos) return
     const colorTable = [0xef4444, 0x22c55e, 0x3b82f6, 0xeab308]
     const color = d.slot != null ? colorTable[d.slot % colorTable.length] : 0xeab308
-    this.particles.burst(d.pos, 4, color, { speed: 5, lifetime: 0.15, size: 0.5 })
+    this._burst(d.pos, 4, color, { speed: 5, lifetime: 0.15, size: 0.5 })
   }
 
   _onBarrelExplode(d) {
     if (!d?.pos) return
     this._spawnExplosionSprite(d.pos, 8, 600)
-    this.particles.burst(d.pos, 30, 0xffaa00, { speed: 12, lifetime: 0.8, upBias: 4 })
-    this.particles.burst(d.pos, 15, 0xffff00, { speed: 8, lifetime: 0.5, upBias: 2 })
-    this.particles.burst(d.pos, 10, 0xe2e8f0, { speed: 6, lifetime: 1.0, gravity: -8 })
+    this._burst(d.pos, 30, 0xffaa00, { speed: 12, lifetime: 0.8, upBias: 4 })
+    this._burst(d.pos, 15, 0xffff00, { speed: 8, lifetime: 0.5, upBias: 2 })
+    this._burst(d.pos, 10, 0xe2e8f0, { speed: 6, lifetime: 1.0, gravity: -8 })
     this.camera.shake(0.4)
     this._flash(0.25)
 
-    const light = new THREE.PointLight(0xffaa00, 6, 25)
-    light.position.set(d.pos.x, d.pos.y + 1, d.pos.z)
-    this._scene.add(light)
-    const start = performance.now()
-    const fade = () => {
-      const elapsed = performance.now() - start
-      if (elapsed >= 400) { this._scene.remove(light); light.dispose(); return }
-      light.intensity = 6 * (1 - elapsed / 400)
+    if (!this._mobile) {
+      const light = new THREE.PointLight(0xffaa00, 6, 25)
+      light.position.set(d.pos.x, d.pos.y + 1, d.pos.z)
+      this._scene.add(light)
+      const start = performance.now()
+      const fade = () => {
+        const elapsed = performance.now() - start
+        if (elapsed >= 400) { this._scene.remove(light); light.dispose(); return }
+        light.intensity = 6 * (1 - elapsed / 400)
+        requestAnimationFrame(fade)
+      }
       requestAnimationFrame(fade)
     }
-    requestAnimationFrame(fade)
   }
 
   _onSkid(d) {

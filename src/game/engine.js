@@ -7,18 +7,18 @@ export class Engine {
     this.container = container;
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x88ccff, 0.006);
+    this.scene.fog = new THREE.FogExp2(0x88ccff, isMobile ? 0.004 : 0.006);
     this._buildSkybox();
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true, powerPreference: 'high-performance', stencil: false, depth: true
+      antialias: !isMobile, powerPreference: 'high-performance', stencil: false, depth: true
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = !isMobile;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
@@ -34,13 +34,12 @@ export class Engine {
   }
 
   _setupLights() {
-    const ambient = new THREE.AmbientLight(0xa0c0d0, 0.8);
+    const ambient = new THREE.AmbientLight(0xa0c0d0, isMobile ? 1.2 : 0.8);
     this.scene.add(ambient);
 
-    // Key light (sun)
     const key = new THREE.DirectionalLight(0xfff4e0, 1.5);
     key.position.set(20, 45, 20);
-    key.castShadow = true;
+    key.castShadow = !isMobile;
     key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 500;
@@ -70,7 +69,7 @@ export class Engine {
     const mat  = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.1 });
     const mesh = new THREE.Mesh(geom, mat);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.receiveShadow = true;
+    mesh.receiveShadow = !isMobile;
     this.scene.add(mesh);
   }
 

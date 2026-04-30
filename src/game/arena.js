@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { wallTexture, rampTexture, pillarTexture } from './textures.js'
+import { isMobile } from '../util/detect.js'
 
 function makeQuaternion(yaw, pitch) {
   const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
@@ -155,8 +156,8 @@ export class Arena {
       geom.setIndex(idxArr)
       geom.computeVertexNormals()
       const mesh = new THREE.Mesh(geom, wallMat)
-      mesh.castShadow = true
-      mesh.receiveShadow = true
+      mesh.castShadow = !isMobile
+      mesh.receiveShadow = !isMobile
       this.scene.add(mesh)
 
       // ── Physics: convex wedge slices along the curve ──
@@ -283,8 +284,8 @@ export class Arena {
     const geom = new THREE.BoxGeometry(platHalf * 2, FLOOR2_THICK, platHalf * 2)
     const mesh = new THREE.Mesh(geom, mat)
     mesh.position.set(0, FLOOR2_H, 0)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
+    mesh.castShadow = !isMobile
+    mesh.receiveShadow = !isMobile
     this.scene.add(mesh)
 
     this.physics.addStaticBox({
@@ -375,8 +376,8 @@ export class Arena {
     const geom = new THREE.BoxGeometry(FLOOR3_HALF * 2, FLOOR3_THICK, FLOOR3_HALF * 2)
     const mesh = new THREE.Mesh(geom, floorMat)
     mesh.position.set(0, FLOOR3_H, 0)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
+    mesh.castShadow = !isMobile
+    mesh.receiveShadow = !isMobile
     this.scene.add(mesh)
 
     this.physics.addStaticBox({
@@ -674,7 +675,7 @@ export class Arena {
       const geom = new THREE.BoxGeometry(2.5, WALL_H * 2, 2.5);
       const mesh = new THREE.Mesh(geom, pillarMat);
       mesh.position.set(x, WALL_H, z);
-      mesh.castShadow = true;
+      mesh.castShadow = !isMobile;
       this.scene.add(mesh);
 
       const tipGeom = new THREE.BoxGeometry(2.6, 0.4, 2.6);
@@ -698,8 +699,8 @@ export class Arena {
     const moundGeom = new THREE.SphereGeometry(moundRadius, moundSegs, moundSegs, 0, Math.PI * 2, 0, Math.PI / 2)
     moundGeom.scale(1, moundHeight / moundRadius, 1)
     const moundMesh = new THREE.InstancedMesh(moundGeom, moundMat, moundPositions.length)
-    moundMesh.castShadow = true
-    moundMesh.receiveShadow = true
+    moundMesh.castShadow = !isMobile
+    moundMesh.receiveShadow = !isMobile
     const stripeMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
     const stripeGeom = new THREE.TorusGeometry(moundRadius * 0.7, 0.05, 6, 16)
     const stripeMesh = new THREE.InstancedMesh(stripeGeom, stripeMat, moundPositions.length)
@@ -846,8 +847,8 @@ export class Arena {
       geom.setIndex(idxArr)
       geom.computeVertexNormals()
       const mesh = new THREE.Mesh(geom, wallMat)
-      mesh.castShadow = true
-      mesh.receiveShadow = true
+      mesh.castShadow = !isMobile
+      mesh.receiveShadow = !isMobile
       this.scene.add(mesh)
 
       // ── Physics: convex wedge grid (theta × phi slices) ──

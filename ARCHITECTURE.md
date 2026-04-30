@@ -17,7 +17,7 @@
 | `src/game/obstacles.js` | 148 | 22 explosive barrels (1 HP, 200% size), InstancedMesh, respawn system |
 | `src/game/camera.js` | 109 | Chase camera with trail smoothing, screen shake, snapTo (pooled vectors) |
 | `src/game/textures.js` | 68 | TextureLoader wrapper with cache + unique clones |
-| `src/game/engine.js` | 98 | Three.js renderer, scene, lights, skybox, ground mesh |
+| `src/game/engine.js` | 99 | Three.js renderer, scene, lights, skybox, ground mesh. Mobile: no shadows, no antialias, boosted ambient, reduced fog |
 | **Networking** | | |
 | `src/net/room.js` | 338 | PeerJS WebRTC room: public matchmaking (predictable IDs), availability check, private rooms, star topology, heartbeat, drop-in support |
 | `src/net/sync.js` | 180 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay, barrel explosion sync |

@@ -202,11 +202,13 @@ export class LobbyUI {
         background: url('hero.png') center/cover no-repeat, #1a1a2e;
         transition: opacity 0.4s;
         font-family: ui-monospace, 'SF Mono', monospace;
+        overflow-y: auto; -webkit-overflow-scrolling: touch;
       }
       .lobby-wrap {
         text-align: center; padding: 24px 20px; max-width: 620px; width: 100%;
         background: rgba(0, 0, 0, 0.55); border-radius: 20px;
         backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        margin: auto;
       }
       .lobby-logo {
         font-size: clamp(32px, 8vw, 64px); font-weight: 900; letter-spacing: 0.05em;

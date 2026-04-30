@@ -96,11 +96,12 @@ export class ResultsUI {
       #results-screen {
         position: fixed; inset: 0; z-index: 20;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(110, 181, 255, 0.9);
+        background: rgba(26, 26, 46, 0.92);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
         font-family: ui-monospace, 'SF Mono', monospace;
         transition: opacity 0.5s;
       }.results-wrap { text-align: center; padding: 40px 24px; }
-      .results-label { font-size: 11px; font-weight: bold; letter-spacing: 0.3em; color: #334155; margin-bottom: 10px; }
+      .results-label { font-size: 11px; font-weight: bold; letter-spacing: 0.3em; color: #94a3b8; margin-bottom: 10px; }
       #results-winner {
         font-size: clamp(36px, 8vw, 56px); font-weight: 900; letter-spacing: 0.1em;
         margin-bottom: 24px;
@@ -110,51 +111,51 @@ export class ResultsUI {
         margin-bottom: 28px;
       }
       .stat-box {
-        background: #ffffff; border: 3px solid #1e293b; border-radius: 12px;
-        padding: 12px 20px; box-shadow: 4px 4px 0 #1e293b; min-width: 90px;
+        background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15); border-radius: 12px;
+        padding: 12px 20px; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); min-width: 90px;
       }
       .stat-label {
-        font-size: 9px; font-weight: bold; letter-spacing: 0.2em; color: #64748b;
+        font-size: 9px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8;
       }
       .stat-val {
-        font-size: 22px; font-weight: 900; letter-spacing: 0.1em; color: #1e293b;
+        font-size: 22px; font-weight: 900; letter-spacing: 0.1em; color: #e2e8f0;
         margin: 4px 0 0;
       }
       .results-ranks {
         display: flex; flex-direction: column; gap: 4px;
         max-width: 640px; margin: 0 auto 28px;
-        background: rgba(255,255,255,0.15); border: 2px solid rgba(30,41,59,0.3);
+        background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.12);
         border-radius: 10px; padding: 8px; overflow: hidden;
       }
       .rr-header {
         display: flex; align-items: center; gap: 0;
-        padding: 6px 10px; border-bottom: 2px solid rgba(30,41,59,0.2);
+        padding: 6px 10px; border-bottom: 2px solid rgba(255,255,255,0.1);
         margin-bottom: 4px;
       }
       .rr-hcell {
         font-size: 9px; font-weight: bold; letter-spacing: 0.15em;
-        color: #334155; text-align: center;
+        color: #94a3b8; text-align: center;
       }
       .rr-row {
         display: flex; align-items: center; gap: 0;
-        padding: 7px 10px; background: rgba(255,255,255,0.25);
+        padding: 7px 10px; background: rgba(255,255,255,0.06);
         border-radius: 6px;
       }
-      .rr-cell { font-size: 12px; font-weight: bold; text-align: center; color: #1e293b; }
+      .rr-cell { font-size: 12px; font-weight: bold; text-align: center; color: #e2e8f0; }
       .rr-c-rank { width: 32px; text-align: center; }
       .rr-c-name { flex: 1; text-align: left; letter-spacing: 0.15em; }
       .rr-c-stat { width: 70px; text-align: center; }
       .rr-c-hp   { width: 80px; text-align: right; letter-spacing: 0.05em; }
       .results-btn {
         display: inline-block; padding: 14px 40px; margin-bottom: 20px;
-        background: #eab308; border: 3px solid #1e293b; border-radius: 12px;
-        color: #1e293b; font-family: inherit; font-size: 14px; font-weight: bold; letter-spacing: 0.2em;
-        cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 #1e293b;
+        background: #eab308; border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+        color: #1a1a2e; font-family: inherit; font-size: 14px; font-weight: bold; letter-spacing: 0.2em;
+        cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
       }
-      .results-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #1e293b; }
-      .results-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1e293b; }
+      .results-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); }
+      .results-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
       .results-portal {
-        display: block; font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #334155;
+        display: block; font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #94a3b8;
         text-decoration: none; transition: color 0.15s;
       }
       .results-portal:hover { color: #22c55e; }

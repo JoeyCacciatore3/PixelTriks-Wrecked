@@ -30,9 +30,9 @@ export class KillFeed {
   _addEntry(attackerSlot, victimSlot) {
     const entry = document.createElement('div')
     entry.style.cssText = `
-      padding:6px 14px;background:rgba(255,255,255,0.9);border:3px solid #1e293b;border-radius:10px;
-      font-size:14px;font-weight:bold;letter-spacing:0.1em;box-shadow:3px 3px 0 #1e293b;
-      white-space:nowrap;opacity:1;transition:opacity 0.5s;
+      padding:6px 14px;background:rgba(0,0,0,0.65);border:2px solid rgba(255,255,255,0.15);border-radius:10px;
+      font-size:14px;font-weight:bold;letter-spacing:0.1em;box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+      white-space:nowrap;opacity:1;transition:opacity 0.5s;backdrop-filter:blur(4px);
     `
 
     const victimName = CAR_NAMES[victimSlot % CAR_NAMES.length] || 'UNKNOWN'
@@ -41,9 +41,9 @@ export class KillFeed {
     if (attackerSlot !== undefined && attackerSlot !== victimSlot) {
       const attackerName = CAR_NAMES[attackerSlot % CAR_NAMES.length] || 'UNKNOWN'
       const attackerColor = CAR_COLORS[attackerSlot % CAR_COLORS.length] || '#fff'
-      entry.innerHTML = `<span style="color:${attackerColor}">${attackerName}</span> <span style="color:#888">WRECKED</span> <span style="color:${victimColor}">${victimName}</span>`
+      entry.innerHTML = `<span style="color:${attackerColor}">${attackerName}</span> <span style="color:#94a3b8">WRECKED</span> <span style="color:${victimColor}">${victimName}</span>`
     } else {
-      entry.innerHTML = `<span style="color:${victimColor}">${victimName}</span> <span style="color:#888">WRECKED</span>`
+      entry.innerHTML = `<span style="color:${victimColor}">${victimName}</span> <span style="color:#94a3b8">WRECKED</span>`
     }
 
     this._el.appendChild(entry)

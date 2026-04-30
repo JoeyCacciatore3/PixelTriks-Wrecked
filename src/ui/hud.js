@@ -1,4 +1,5 @@
 import { CAR_COLORS, MAX_HEALTH } from '../game/car.js'
+import { isMobile } from '../util/detect.js'
 
 export class DerbyHUD {
   constructor() {
@@ -61,6 +62,7 @@ export class DerbyHUD {
 
     for (const car of derby.allCars) {
       if (!car) continue
+      if (isMobile && !car.isHuman) continue
       const bar = this._ensureBar(car)
       const pct = (car.health / MAX_HEALTH) * 100
       bar.fill.style.width = pct.toFixed(1) + '%'
@@ -177,8 +179,6 @@ export class DerbyHUD {
         50% { transform: scale(1.0); }
         100% { transform: scale(1.8); opacity: 0; }
       }
-      .hidden { display: none !important; }
-
       @media (max-width: 600px) {
         #hud-health-bars { top: max(8px, env(safe-area-inset-top, 0px)); left: max(8px, env(safe-area-inset-left, 0px)); }
         .hb-track { width: clamp(60px, 18vw, 120px); height: 5px; }
