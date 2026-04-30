@@ -78,11 +78,11 @@ Test after every phase, not just at the end.
 
 ## Architecture Patterns
 
-- **Event-driven communication** — components talk via `window.dispatchEvent(new CustomEvent(...))`. Events: `car:hit` (slot, health, damage, pos, attackerSlot), `car:boost`, `car:land`, `car:eliminated`, `car:skid`, `car:fire` (slot, pos), `barrel:explode` (pos, radius, damage, attackerSlot, barrelIdx), `derby:start`, `derby:winner`, `obstacle:hit`, `lobby:solo`, `room:player_join`, `room:player_leave`, `room:state_change`, `room:msg`.
+- **Event-driven communication** — components talk via `window.dispatchEvent(new CustomEvent(...))`. Events: `car:hit` (slot, health, damage, pos, attackerSlot), `car:boost`, `car:land`, `car:eliminated`, `car:skid`, `car:fire` (slot, pos), `barrel:explode` (pos, radius, damage, attackerSlot, barrelIdx), `derby:start`, `derby:winner`, `obstacle:hit`, `lobby:play`, `room:player_join`, `room:player_leave`, `room:state_change`, `room:msg`.
 - **Input interface** — car.js reads from an input object with getters: `throttle`, `brake`, `steerLeft`, `steerRight`, `boostPressed`, `firePressed`, `steerAxis`, `throttleAxis`. Both keyboard Input class and AI drivers produce this same interface. Touch controls must also produce this interface.
 - **Physics-first** — Rapier bodies are authoritative. Meshes sync from physics each frame, not the other way around.
 - **State machine** — DerbyGame.state: LOBBY → COUNTDOWN → PLAYING → FINISHED. Horde mode: 3 AI at start, +1 every 15s, max 8 alive. Defeat = all humans dead.
-- **Host-authoritative multiplayer** — host computes all collision/bullet/barrel damage, broadcasts to guests. Guests send inputs, receive state snapshots with 100ms interpolation delay.
+- **Drop-in multiplayer** — PLAY button tries to join an existing public game, falls back to hosting. Host computes all collision/bullet/barrel damage, broadcasts to guests. Guests send inputs, receive state snapshots with 100ms interpolation delay. Private rooms available via room codes.
 - **Heartbeat/keepalive** — 2s ping/pong, 6s timeout. Dead connections trigger AI takeover of abandoned cars.
 - **Assets** — textures from `public/textures/` (11 PNGs), sounds via Web Audio oscillators/noise (zero audio files).
 

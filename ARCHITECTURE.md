@@ -19,10 +19,10 @@
 | `src/game/textures.js` | 68 | TextureLoader wrapper with cache + unique clones |
 | `src/game/engine.js` | 98 | Three.js renderer, scene, lights, skybox, ground mesh |
 | **Networking** | | |
-| `src/net/room.js` | 200 | PeerJS WebRTC room: host/guest, star topology, heartbeat (2s ping, 6s timeout), slot management |
+| `src/net/room.js` | 260 | PeerJS WebRTC room: public matchmaking (predictable IDs), private rooms, star topology, heartbeat, drop-in support |
 | `src/net/sync.js` | 180 | 20Hz state broadcast, snapshot interpolation (100ms delay, slerp), host-auth damage relay, barrel explosion sync |
 | **UI** | | |
-| `src/ui/lobby.js` | 274 | Lobby screen: solo/multiplayer, room code, slot grid, portal link |
+| `src/ui/lobby.js` | 276 | Lobby screen: PLAY (public matchmaking), private rooms, slot grid, portal link |
 | `src/ui/hud.js` | 228 | Dynamic health bars, timer, speed, kill counter, countdown overlay |
 | `src/ui/results.js` | 164 | Match results: stat boxes, leaderboard table, play again, portal link |
 | `src/ui/minimap.js` | 107 | Radar-style canvas minimap: car dots, local triangle, arena outline, top-right, 120px |
@@ -88,7 +88,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 | `obstacle:hit` | pos | obstacles.js `damageBarrel()` | effects, audio |
 | `derby:start` | — | derby.js `_startPlaying()` | audio |
 | `derby:winner` | slot | derby.js `update()` | audio |
-| `lobby:solo` | — | lobby.js | main.js |
+| `lobby:play` | — | lobby.js | main.js |
 | `room:player_join` | slot, playerId | room.js | main.js |
 | `room:player_leave` | slot | room.js | main.js (AI takeover) |
 | `room:state_change` | state | room.js | main.js |
@@ -98,6 +98,7 @@ All inter-module communication uses `window.dispatchEvent(new CustomEvent(...))`
 
 **Transport:** PeerJS WebRTC DataChannel (unreliable for lower latency)
 **Topology:** Star (host relays to all guests)
+**Matchmaking:** Predictable public peer IDs (`wy-pub-001` through `wy-pub-010`). PLAY scans all in parallel, joins first open room or creates new host.
 **Tick rate:** 20Hz send, 60Hz interpolated render
 
 | Message Type | Direction | Payload |

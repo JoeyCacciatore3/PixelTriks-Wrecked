@@ -67,6 +67,7 @@ async function boot() {
   // ── State transitions ──
 
   derby.onStateChange = (state) => {
+    room.setGameState(state)
     if (room.isHost && state === DerbyState.COUNTDOWN) room.broadcastState('COUNTDOWN')
     if (state === DerbyState.COUNTDOWN) {
       if (derby.localCar) camera.snapTo(derby.localCar)
@@ -91,39 +92,66 @@ async function boot() {
     }
   }
 
-  // ── Solo (button or Enter key) ──
+  // ── Play (public matchmaking — try join, fallback to host) ──
 
-  function startSolo() {
+  let _playStarted = false
+
+  async function startPlay() {
+    if (_playStarted || derby.state !== DerbyState.LOBBY || derby.allCars.length > 0) return
+    _playStarted = true
     try {
-      if (derby.state !== DerbyState.LOBBY || derby.allCars.length > 0) return;
-      derby.addLocalPlayer(0);
-      hud.setLocalSlot(0);
-      effects.setLocalSlot(0);
-      derby.spawnInitialAI();
-      lobby.hide();
-      hud.show();
-      derby.beginMatchCountdown();
-    } catch (err) { showError(err); }
+      const joined = await room.findAndJoinPublic()
+      if (joined) {
+        lobby.showSlotGrid()
+        derby.setSyncManager(sync, false)
+        return
+      }
+      await room.createPublicRoom()
+      startAsHost()
+    } catch (err) {
+      startOffline()
+    }
   }
 
-  window.addEventListener('lobby:solo', startSolo);
+  function startAsHost() {
+    derby.addLocalPlayer(0)
+    hud.setLocalSlot(0)
+    effects.setLocalSlot(0)
+    derby.setSyncManager(sync, true)
+    derby.spawnInitialAI()
+    lobby.hide()
+    hud.show()
+    derby.beginMatchCountdown()
+  }
+
+  function startOffline() {
+    derby.addLocalPlayer(0)
+    hud.setLocalSlot(0)
+    effects.setLocalSlot(0)
+    derby.spawnInitialAI()
+    lobby.hide()
+    hud.show()
+    derby.beginMatchCountdown()
+  }
+
+  window.addEventListener('lobby:play', () => startPlay());
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && derby.state === DerbyState.LOBBY && derby.allCars.length === 0) startSolo();
+    if (e.key === 'Enter' && derby.state === DerbyState.LOBBY && derby.allCars.length === 0) startPlay();
   });
 
-  // ── Multiplayer — host flow ──
+  // ── Private room — host flow ──
 
   lobby.onStart = async () => {
-    const code = await room.createRoom();
-    lobby.showRoomCode(code);
-    lobby.setSlot(0, 'YOU (HOST)');
+    const code = await room.createRoom()
+    lobby.showRoomCode(code)
+    lobby.setSlot(0, 'YOU (HOST)')
     derby.addLocalPlayer(0)
     hud.setLocalSlot(0)
     derby.setSyncManager(sync, true)
     derby.startLobby()
   };
 
-  // ── Multiplayer — join flow ──
+  // ── Private room — join flow ──
 
   lobby.onJoin = async (code) => {
     await room.joinRoom(code)
@@ -136,13 +164,17 @@ async function boot() {
   window.addEventListener('room:player_join', (e) => {
     const { slot, playerId } = e.detail;
     if (playerId === room.myId) {
-      derby.addLocalPlayer(slot);
-      hud.setLocalSlot(slot);
-      effects.setLocalSlot(slot);
-      lobby.setSlot(slot, 'YOU');
+      derby.addLocalPlayer(slot)
+      hud.setLocalSlot(slot)
+      effects.setLocalSlot(slot)
+      lobby.setSlot(slot, 'YOU')
     } else {
-      derby.addRemotePlayer(slot);
-      lobby.setSlot(slot, 'P' + (slot + 1));
+      if (derby.drivers[slot]) {
+        delete derby.drivers[slot]
+        derby._aiSlots.delete(slot)
+      }
+      derby.addRemotePlayer(slot)
+      lobby.setSlot(slot, 'P' + (slot + 1))
     }
   });
 
@@ -159,6 +191,11 @@ async function boot() {
     if (e.detail.state === 'COUNTDOWN' && !room.isHost) {
       derby.spawnInitialAI()
       derby.beginMatchCountdown()
+    }
+    if (e.detail.state === 'PLAYING' && !room.isHost) {
+      lobby.hide()
+      hud.show()
+      minimap.show()
     }
   })
 
@@ -212,7 +249,7 @@ async function boot() {
   requestAnimationFrame(tick);
   window.__wy = { engine, physics, derby, room, sync, audio, effects };
 
-  if (isPortalUser) startSolo()
+  if (isPortalUser) startOffline()
 }
 
 boot().catch(showError);

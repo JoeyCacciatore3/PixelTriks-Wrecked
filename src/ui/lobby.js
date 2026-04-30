@@ -29,15 +29,16 @@ export class LobbyUI {
         <div class="lobby-tagline">CO-OP SURVIVAL DERBY</div>
 
         <div class="lobby-solo-wrap">
-          <button class="lobby-btn primary solo-btn" id="btn-solo">PLAY SOLO</button>
+          <button class="lobby-btn primary solo-btn" id="btn-play">PLAY</button>
+          <div class="play-hint">DROP-IN MULTIPLAYER · OTHERS CAN JOIN YOUR GAME</div>
         </div>
 
-        <div class="lobby-separator">── MULTIPLAYER ──</div>
+        <div class="lobby-separator">── PRIVATE ROOM ──</div>
 
         <div class="lobby-grid">
           <div class="lobby-col">
             <div class="lobby-section-title">CREATE ROOM</div>
-            <button class="lobby-btn" id="btn-create">CREATE GAME</button>
+            <button class="lobby-btn" id="btn-create">CREATE PRIVATE</button>
             <div id="room-code-display" class="room-code-display hidden"></div>
           </div>
           <div class="lobby-divider">OR</div>
@@ -85,8 +86,8 @@ export class LobbyUI {
   }
 
   _bindEvents() {
-    this._el.querySelector('#btn-solo').addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('lobby:solo'));
+    this._el.querySelector('#btn-play').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('lobby:play'));
     });
     const btnCreate = this._el.querySelector('#btn-create');
     if (btnCreate) btnCreate.addEventListener('click', () => this._onCreate());
@@ -248,6 +249,7 @@ export class LobbyUI {
       .lobby-countdown-sub { font-size: 12px; font-weight: bold; letter-spacing: 0.2em; color: #334155; }
       .lobby-solo-wrap { margin: 0 auto 4px; max-width: 280px; }
       .solo-btn { font-size: 13px !important; padding: 16px !important; margin-top: 0 !important; }
+      .play-hint { font-size: 8px; letter-spacing: 0.2em; color: #475569; margin-top: 8px; font-weight: bold; }
       .lobby-separator { font-size: 10px; font-weight: bold; letter-spacing: 0.2em; color: #334155; margin: 18px 0 16px; }
       .lobby-controls-hint { margin-top: 24px; font-size: 10px; font-weight: bold; letter-spacing: 0.1em; color: #475569; }
       .portal-btn {

@@ -111,6 +111,31 @@
 - arena.js: portal ring redirects to `ref` URL for return-path capability
 - Passes all Vibe Jam 2026 rules
 
+**Portal restructure:**
+- 3rd floor portal → return portal (orange), only visible for `?portal=true` users
+- 4 green exit portals at top of death ramps, link to vibej.am/portal/2026
+
+### Phase 12 — Drop-In Multiplayer ✅ COMPLETE
+
+**Public matchmaking (zero infrastructure):**
+- Predictable PeerJS peer IDs (`wy-pub-001` through `wy-pub-010`) as matchmaking pool
+- PLAY button: parallel scan for open public rooms → join first available → fallback to host
+- Solo play = host with no guests yet, open for drop-ins
+- Race condition safe: `found` flag prevents multiple simultaneous joins, orphan peers cleaned up
+
+**Drop-in mid-game:**
+- Host accepts connections during PLAYING state
+- New player replaces AI driver in slot 1-3
+- Host sends `gameState` in `assign_slot` message so guest skips lobby if match is active
+- Guest receives `room:state_change` with PLAYING → lobby hides, HUD shows
+
+**Lobby UI restructured:**
+- Primary: "PLAY" button (was "PLAY SOLO") with "DROP-IN MULTIPLAYER" hint
+- Secondary: "PRIVATE ROOM" section (was primary multiplayer) with create/join codes
+- `lobby:solo` event replaced by `lobby:play`
+
+**Private rooms unchanged** — existing create/join flow with random codes preserved
+
 ---
 
 ## Completed Phases — Audit Issues
@@ -378,7 +403,7 @@ src/
 - `obstacle:hit` — barrel damaged (pos)
 - `derby:start` — match began
 - `derby:winner` — match ended (slot)
-- `lobby:solo` — solo button clicked
+- `lobby:play` — solo button clicked
 - `room:player_join` — player joined room (slot, playerId)
 - `room:player_leave` — player left room (slot)
 - `room:state_change` — room state changed (state)

@@ -1,53 +1,160 @@
 import Peer from 'peerjs';
 
+const PUBLIC_POOL_SIZE = 10
+const PUBLIC_PREFIX = 'wy-pub-'
+const PRIVATE_PREFIX = 'wy-'
+const CONNECT_TIMEOUT = 3000
+
 function randomCode(len = 6) {
   return Array.from({ length: len }, () =>
     'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]
   ).join('');
 }
 
-// ── RoomManager (PeerJS / WebRTC — no server or API keys needed) ──
-//
-// Host creates a Peer with ID "wy-{CODE}". Guests connect to that ID.
-// Host relays messages between guests (star topology).
-//
-// Window events fired:
-//   room:player_join   { slot, playerId }
-//   room:player_leave  { slot }
-//   room:state_change  { state }
-//   room:msg           { type, payload, from }
-
 export class RoomManager {
   constructor() {
     this._peer     = null
-    this._conns    = {}   // slotIndex → DataConnection
+    this._conns    = {}
     this.code      = null
     this.myId      = null
     this.mySlot    = -1
     this.isHost    = false
+    this.isPublic  = false
     this._slots    = {}
-    this._nextSlot = 1    // host = 0, guests = 1, 2, 3
+    this._nextSlot = 1
     this._lastPong = {}
     this._heartbeatId = null
   }
 
-  // ── Host ──
+  async createPublicRoom() {
+    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
+      const peerId = PUBLIC_PREFIX + String(i).padStart(3, '0')
+      try {
+        await this._registerAsPeer(peerId)
+        this.code = 'PUBLIC-' + i
+        this.isPublic = true
+        return this.code
+      } catch (_) {}
+    }
+    throw new Error('All public slots full')
+  }
+
+  async findAndJoinPublic() {
+    let found = false
+    const peers = []
+
+    const tryOne = async (i) => {
+      const hostId = PUBLIC_PREFIX + String(i).padStart(3, '0')
+      const peer = new Peer()
+      peers.push(peer)
+
+      const myId = await new Promise((resolve, reject) => {
+        peer.on('open', resolve)
+        peer.on('error', reject)
+        setTimeout(() => reject(new Error('timeout')), CONNECT_TIMEOUT)
+      })
+
+      if (found) { peer.destroy(); return null }
+
+      const conn = peer.connect(hostId)
+      const ok = await new Promise((resolve) => {
+        conn.on('open', () => resolve(true))
+        conn.on('error', () => resolve(false))
+        setTimeout(() => resolve(false), CONNECT_TIMEOUT)
+      })
+
+      if (!ok || found) { peer.destroy(); return null }
+
+      const firstMsg = await new Promise((resolve) => {
+        conn.on('data', function handler(msg) {
+          conn.off('data', handler)
+          resolve(msg)
+        })
+        setTimeout(() => resolve(null), CONNECT_TIMEOUT)
+      })
+
+      if (!firstMsg || firstMsg.type === 'room_full' || found) {
+        peer.destroy()
+        return null
+      }
+
+      found = true
+      this._peer = peer
+      this.myId = myId
+      this.isHost = false
+      this._conns[0] = conn
+      conn.on('data', (msg) => this._onData(msg, 0))
+      conn.on('close', () => this._handleDisconnect(0))
+      this._lastPong[0] = Date.now()
+      this._startHeartbeat()
+
+      if (firstMsg.type === 'assign_slot') {
+        this.mySlot = firstMsg.slot
+        this._slots[firstMsg.slot] = this.myId
+        window.dispatchEvent(new CustomEvent('room:player_join', {
+          detail: { slot: firstMsg.slot, playerId: this.myId }
+        }))
+        if (firstMsg.gameState && firstMsg.gameState !== 'LOBBY') {
+          window.dispatchEvent(new CustomEvent('room:state_change', {
+            detail: { state: firstMsg.gameState }
+          }))
+        }
+      }
+
+      return hostId
+    }
+
+    const attempts = []
+    for (let i = 1; i <= PUBLIC_POOL_SIZE; i++) {
+      attempts.push(tryOne(i).catch(() => null))
+    }
+
+    const results = await Promise.allSettled(attempts)
+
+    for (const p of peers) {
+      if (p !== this._peer && !p.destroyed) p.destroy()
+    }
+
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) return r.value
+    }
+    return null
+  }
+
+  async _registerAsPeer(peerId) {
+    this._peer = new Peer(peerId)
+    await new Promise((resolve, reject) => {
+      this._peer.on('open', () => resolve())
+      this._peer.on('error', (err) => {
+        this._peer = null
+        reject(new Error(err.type || String(err)))
+      })
+    })
+
+    this.myId = peerId
+    this.isHost = true
+    this.mySlot = 0
+    this._slots[0] = peerId
+
+    this._peer.on('connection', (conn) => this._hostOnConn(conn))
+    this._startHeartbeat()
+  }
 
   async createRoom() {
-    const code   = randomCode();
-    const peerId = 'wy-' + code.toLowerCase();
+    const code   = randomCode()
+    const peerId = PRIVATE_PREFIX + code.toLowerCase()
 
-    this._peer = new Peer(peerId);
+    this._peer = new Peer(peerId)
     await new Promise((resolve, reject) => {
-      this._peer.on('open',  ()    => resolve());
-      this._peer.on('error', (err) => reject(new Error(err.type || String(err))));
-    });
+      this._peer.on('open',  ()    => resolve())
+      this._peer.on('error', (err) => reject(new Error(err.type || String(err))))
+    })
 
-    this.code   = code;
-    this.myId   = peerId;
-    this.isHost = true;
-    this.mySlot = 0;
-    this._slots[0] = peerId;
+    this.code   = code
+    this.myId   = peerId
+    this.isHost = true
+    this.mySlot = 0
+    this._slots[0] = peerId
 
     this._peer.on('connection', (conn) => this._hostOnConn(conn))
     this._startHeartbeat()
@@ -66,10 +173,10 @@ export class RoomManager {
     conn.on('open', () => {
       this._slots[slot] = conn.peer
       this._lastPong[slot] = Date.now()
-      conn.send({ type: 'assign_slot', slot })
+      conn.send({ type: 'assign_slot', slot, gameState: this._gameState || 'LOBBY' })
       window.dispatchEvent(new CustomEvent('room:player_join', {
         detail: { slot, playerId: conn.peer }
-      }));
+      }))
     });
 
     conn.on('data', (msg) => this._onData(msg, slot));
@@ -194,6 +301,8 @@ export class RoomManager {
     }
     if (this._peer) try { this._peer.destroy() } catch (_) {}
   }
+
+  setGameState(state) { this._gameState = state }
 
   get filledSlots()  { return Object.keys(this._slots).map(Number).sort(); }
   get playerCount()  { return Object.keys(this._slots).length; }
