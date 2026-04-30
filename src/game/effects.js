@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { isMobile } from '../util/detect.js';
 
+const _explosionTex = new THREE.TextureLoader().load('textures/explosion.png')
+
 // ── Particle pool ──
 
 class ParticleSystem {
@@ -201,6 +203,24 @@ export class Effects {
 
   setLocalSlot(slot) { this._localSlot = slot }
 
+  _spawnExplosionSprite(pos, scale = 6, duration = 500) {
+    const mat = new THREE.SpriteMaterial({ map: _explosionTex, transparent: true, opacity: 1, depthWrite: false })
+    const sprite = new THREE.Sprite(mat)
+    sprite.position.set(pos.x, pos.y + 1.5, pos.z)
+    sprite.scale.set(0.5, 0.5, 0.5)
+    this._scene.add(sprite)
+    const start = performance.now()
+    const animate = () => {
+      const t = (performance.now() - start) / duration
+      if (t >= 1) { this._scene.remove(sprite); mat.dispose(); return }
+      const s = 0.5 + (scale - 0.5) * Math.min(1, t * 3)
+      sprite.scale.set(s, s, s)
+      mat.opacity = t < 0.4 ? 1 : 1 - (t - 0.4) / 0.6
+      requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+  }
+
   _onHit(d) {
     const damage = d?.damage ?? 10;
     this.particles.burst(d?.pos, 16, 0xff3300, { speed: 10, lifetime: 0.5 });
@@ -218,6 +238,7 @@ export class Effects {
   }
 
   _onEliminated(d) {
+    if (d?.pos) this._spawnExplosionSprite(d.pos, 10, 700)
     this.particles.burst(d?.pos, 40, 0xffaa00, { speed: 14, lifetime: 1.0, upBias: 5 });
     this.particles.burst(d?.pos, 20, 0xffff00, { speed: 8,  lifetime: 0.8 });
     this.camera.shake(0.6);
@@ -291,6 +312,7 @@ export class Effects {
 
   _onBarrelExplode(d) {
     if (!d?.pos) return
+    this._spawnExplosionSprite(d.pos, 8, 600)
     this.particles.burst(d.pos, 30, 0xffaa00, { speed: 12, lifetime: 0.8, upBias: 4 })
     this.particles.burst(d.pos, 15, 0xffff00, { speed: 8, lifetime: 0.5, upBias: 2 })
     this.particles.burst(d.pos, 10, 0xe2e8f0, { speed: 6, lifetime: 1.0, gravity: -8 })
