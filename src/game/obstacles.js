@@ -3,7 +3,9 @@ import { barrelTexture } from './textures.js'
 import { SPAWN_POINTS } from './arena.js'
 import { isMobile } from '../util/detect.js'
 
-const BARREL_COUNT       = 22
+const BARREL_COUNT       = 18
+const BARREL_COUNT_F2    = 10
+const BARREL_COUNT_F3    = 4
 const BARREL_HP          = 1
 const BARREL_EXPLODE_RADIUS = 12
 const BARREL_EXPLODE_DMG = 80
@@ -13,23 +15,25 @@ const SPAWN_AREA_HW = 80   // X half-extent (arena is ±100, leave a wall buffer
 const SPAWN_AREA_HD = 100  // Z half-extent (arena is ±125)
 const MIN_SEPARATION = 8   // barrels won't spawn within this many m of each other
 const SPAWN_CLEARANCE = 14 // barrels won't spawn within this of a player spawn point
-const FLOOR3_HALF = 12     // central elevated platform footprint to avoid
+const FLOOR3_HALF = 60     // floor 3 wings extend to ±60 on X
 
 const _m4 = new THREE.Matrix4()
 const _q4 = new THREE.Quaternion()
 const _zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0)
 
-function pickPositions(count) {
+function pickPositions(count, areaHW = SPAWN_AREA_HW, areaHD = SPAWN_AREA_HD, avoidCenter = true) {
   const out = []
   let attempts = 0
   while (out.length < count && attempts < count * 60) {
     attempts++
-    const x = (Math.random() * 2 - 1) * SPAWN_AREA_HW
-    const z = (Math.random() * 2 - 1) * SPAWN_AREA_HD
-    if (Math.abs(x) < FLOOR3_HALF && Math.abs(z) < FLOOR3_HALF) continue
+    const x = (Math.random() * 2 - 1) * areaHW
+    const z = (Math.random() * 2 - 1) * areaHD
+    if (avoidCenter && Math.abs(x) < FLOOR3_HALF && Math.abs(z) < FLOOR3_HALF) continue
     let ok = true
-    for (const sp of SPAWN_POINTS) {
-      if (Math.hypot(sp.x - x, sp.z - z) < SPAWN_CLEARANCE) { ok = false; break }
+    if (avoidCenter) {
+      for (const sp of SPAWN_POINTS) {
+        if (Math.hypot(sp.x - x, sp.z - z) < SPAWN_CLEARANCE) { ok = false; break }
+      }
     }
     if (!ok) continue
     for (const p of out) {
@@ -47,26 +51,34 @@ export class Obstacles {
     this.physics = physics
     this._barrels = []
 
-    const positions = pickPositions(BARREL_COUNT)
+    const groundPos = pickPositions(BARREL_COUNT)
+    const f2Pos = pickPositions(BARREL_COUNT_F2, 50, 50, false)
+    const f3Pos = pickPositions(BARREL_COUNT_F3, 50, 7, false)
+
+    const allPositions = [
+      ...groundPos.map(([x, z]) => [x, 1.04, z]),
+      ...f2Pos.map(([x, z]) => [x, 7.0 + 1.04, z]),
+      ...f3Pos.map(([x, z]) => [x, 15.0 + 1.04, z]),
+    ]
+
     const tex = barrelTexture()
     const mat = new THREE.MeshStandardMaterial({
       map: tex, roughness: 0.7, metalness: 0.3, color: 0xcc4400
     })
     const geom = new THREE.CylinderGeometry(0.84, 0.90, 2.0, 10)
-    this._instancedMesh = new THREE.InstancedMesh(geom, mat, positions.length)
+    this._instancedMesh = new THREE.InstancedMesh(geom, mat, allPositions.length)
     this._instancedMesh.castShadow = !isMobile
     scene.add(this._instancedMesh)
 
-    for (let i = 0; i < positions.length; i++) {
-      const [x, z] = positions[i]
-      const y = 1.04
+    for (let i = 0; i < allPositions.length; i++) {
+      const [x, y, z] = allPositions[i]
       const { body, collider } = physics.createDynamicBox({
         position: { x, y, z }, hw: 0.88, hh: 1.0, hd: 0.88,
         density: 0.4, restitution: 0.65
       })
       _m4.makeTranslation(x, y, z)
       this._instancedMesh.setMatrixAt(i, _m4)
-      this._barrels.push({ idx: i, body, collider, alive: true, hp: BARREL_HP, x, z })
+      this._barrels.push({ idx: i, body, collider, alive: true, hp: BARREL_HP, x, y, z })
     }
     this._instancedMesh.instanceMatrix.needsUpdate = true
   }
@@ -133,14 +145,14 @@ export class Obstacles {
 
   _respawnBarrel(b) {
     const { body, collider } = this.physics.createDynamicBox({
-      position: { x: b.x, y: 1.04, z: b.z },
+      position: { x: b.x, y: b.y, z: b.z },
       hw: 0.88, hh: 1.0, hd: 0.88, density: 0.4, restitution: 0.65
     })
     b.body = body
     b.collider = collider
     b.alive = true
     b.hp = BARREL_HP
-    _m4.makeTranslation(b.x, 1.04, b.z)
+    _m4.makeTranslation(b.x, b.y, b.z)
     this._instancedMesh.setMatrixAt(b.idx, _m4)
     this._instancedMesh.instanceMatrix.needsUpdate = true
   }

@@ -1,8 +1,9 @@
 import * as THREE from 'three'
-import { Car, MAX_HEALTH, BULLET_DAMAGE } from './car.js'
+import { Car, MAX_HEALTH, BULLET_DAMAGE, SUPER_BULLET_DAMAGE, SUPER_EXPLODE_RADIUS } from './car.js'
 import { AIDriver } from './ai.js'
 import { SPAWN_POINTS, ARENA_W, ARENA_D } from './arena.js'
-import { heartTexture } from './textures.js'
+import { heartTexture, bulletTexture } from './textures.js'
+import { isMobile } from '../util/detect.js'
 
 const _collQ = new THREE.Quaternion()
 const _collFwd = new THREE.Vector3()
@@ -19,16 +20,20 @@ const CRASH_RADIUS    = 2.8
 const MIN_CRASH_SPEED = 2.5
 const DAMAGE_SCALE    = 2.0
 
-const MAX_AI_ALIVE    = 8
+const MAX_AI_ALIVE    = isMobile ? 10 : 12
 const AI_SPAWN_INTERVAL = 15
 const INITIAL_AI_COUNT  = 3
 const AI_DAMAGE_OUT = 0.15
 const AI_DAMAGE_IN  = 2.0
 
+const MATCH_DURATION = 90
+
 const HEAL_AMOUNT = 50
 const PICKUP_RADIUS = 3.0
-const PICKUP_RESPAWN = 5.0
-const GROUND_PICKUP_COUNT = 2
+const PICKUP_RESPAWN = 3.0
+const SUPER_SHOT_GRANT = 2
+const SUPER_EXPLODE_DMG = 160
+const FLOOR2_Y = 7.4
 const FLOOR3_Y = 15.4
 
 export class DerbyGame {
@@ -45,6 +50,7 @@ export class DerbyGame {
     this._countdown  = Infinity
     this._initialAISpawned = false
     this._matchTimer = 0
+    this._timeRemaining = MATCH_DURATION
     this._winner     = null
     this._elapsed    = 0
     this._allCarsCache = []
@@ -57,6 +63,7 @@ export class DerbyGame {
     this.playerStats = {}
     this._lastAttacker = {}
     this._pickups = []
+    this._superPickups = []
     this._pickupTime = 0
 
     this.onStateChange = null
@@ -134,7 +141,7 @@ export class DerbyGame {
     if (this.state === DerbyState.PLAYING || this.state === DerbyState.COUNTDOWN) {
       car.spawnAt({ x: 0, y: 25, z: 0 }, Math.random() * Math.PI * 2, 3)
     } else if (SPAWN_POINTS[slotIndex]) {
-      car.spawnAt(SPAWN_POINTS[slotIndex], 0)
+      car.spawnAt(SPAWN_POINTS[slotIndex], SPAWN_POINTS[slotIndex].angle)
     }
   }
 
@@ -142,6 +149,7 @@ export class DerbyGame {
     const car = this._ensureCar(slotIndex, false)
     const driver = new AIDriver(car, slotIndex)
     driver.humansOnly = true
+    car.displayName = driver.name
     this.drivers[slotIndex] = driver
     this._aiSlots.add(slotIndex)
     return car
@@ -212,6 +220,7 @@ export class DerbyGame {
 
   _startPlaying() {
     this._elapsed = 0
+    this._timeRemaining = MATCH_DURATION
     this._aiSpawnTimer = AI_SPAWN_INTERVAL
     for (const slot of this._humanSlots) {
       const car = this.cars[slot]
@@ -282,17 +291,21 @@ export class DerbyGame {
       }
     }
 
+    this._timeRemaining -= dt
+
     if (this._elapsed > 3) {
       let humansAlive = false
       for (const slot of this._humanSlots) {
         const car = this.cars[slot]
         if (car && !car.eliminated) { humansAlive = true; break }
       }
-      if (!humansAlive) {
-        this._winner = -1
-        this._disposePickups()
-        this._setState(DerbyState.FINISHED)
-        window.dispatchEvent(new CustomEvent('derby:winner', { detail: { slot: -1 } }))
+
+      const aiAlive = this._countAliveAI() > 0
+
+      if (!humansAlive || (this._timeRemaining <= 0 && aiAlive)) {
+        this._endMatch(-1)
+      } else if (!aiAlive) {
+        this._endMatch(0)
       }
     }
   }
@@ -391,7 +404,7 @@ export class DerbyGame {
     const BULLET_HIT_RADIUS_BARREL = 2.0
 
     for (const car of this.cars) {
-      if (!car) continue
+      if (!car || car.activeBullets === 0) continue
       const shooterIsHuman = this._isHumanSlot(car.slot)
       for (let bi = 0; bi < car._bullets.length; bi++) {
         const b = car._bullets[bi]
@@ -407,11 +420,22 @@ export class DerbyGame {
           const d = Math.hypot(b.x - tp.x, b.y - tp.y, b.z - tp.z)
           if (d < BULLET_HIT_RADIUS_CAR) {
             car.killBullet(bi)
-            let dmg = BULLET_DAMAGE
-            if (!shooterIsHuman) dmg *= AI_DAMAGE_OUT
-            if (!targetIsHuman)  dmg *= AI_DAMAGE_IN
-            target.applyDamage(dmg, car.slot)
-            if (this._sync) this._sync.broadcastDamage(target.slot, dmg, car.slot)
+            if (b.isSuper) {
+              const hitPos = { x: b.x, y: b.y, z: b.z }
+              this._applyExplosion({
+                pos: hitPos, radius: SUPER_EXPLODE_RADIUS,
+                damage: SUPER_EXPLODE_DMG, attackerSlot: car.slot
+              })
+              window.dispatchEvent(new CustomEvent('supershot:explode', {
+                detail: { pos: hitPos, radius: SUPER_EXPLODE_RADIUS }
+              }))
+            } else {
+              let dmg = BULLET_DAMAGE
+              if (!shooterIsHuman) dmg *= AI_DAMAGE_OUT
+              if (!targetIsHuman)  dmg *= AI_DAMAGE_IN
+              target.applyDamage(dmg, car.slot)
+              if (this._sync) this._sync.broadcastDamage(target.slot, dmg, car.slot)
+            }
             break
           }
         }
@@ -423,6 +447,16 @@ export class DerbyGame {
           const d = Math.hypot(b.x - bp.x, b.y - bp.y, b.z - bp.z)
           if (d < BULLET_HIT_RADIUS_BARREL) {
             car.killBullet(bi)
+            if (b.isSuper) {
+              const hitPos = { x: b.x, y: b.y, z: b.z }
+              this._applyExplosion({
+                pos: hitPos, radius: SUPER_EXPLODE_RADIUS,
+                damage: SUPER_EXPLODE_DMG, attackerSlot: car.slot
+              })
+              window.dispatchEvent(new CustomEvent('supershot:explode', {
+                detail: { pos: hitPos, radius: SUPER_EXPLODE_RADIUS }
+              }))
+            }
             this._obstacles.damageBarrel(barrel, car.slot)
             break
           }
@@ -447,33 +481,62 @@ export class DerbyGame {
 
   _initPickups() {
     if (this._pickups.length) return
-    const tex = heartTexture()
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
 
+    const heartTex = heartTexture()
+    const superTex = bulletTexture()
     const hw = ARENA_W / 2 - 20
     const hd = ARENA_D / 2 - 20
-    const positions = [
-      { x: 0, y: FLOOR3_Y, z: 0 },
-    ]
-    for (let i = 0; i < GROUND_PICKUP_COUNT; i++) {
-      positions.push({
-        x: (Math.random() * 2 - 1) * hw,
-        y: 1.5,
-        z: (Math.random() * 2 - 1) * hd,
-      })
-    }
+    const f2Half = 60
 
-    for (const pos of positions) {
-      const sprite = new THREE.Sprite(mat.clone())
-      sprite.scale.set(3, 3, 1)
+    const heartPositions = [
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: 0, y: FLOOR3_Y + 3.5, z: 0 },
+    ]
+
+    const heartMat = new THREE.SpriteMaterial({ map: heartTex, transparent: true, depthWrite: false })
+    for (const pos of heartPositions) {
+      const sprite = new THREE.Sprite(heartMat)
+      const isFloor3 = pos.y > 15
+      const s = isFloor3 ? 12 : 3
+      sprite.scale.set(s, s, 1)
       sprite.position.set(pos.x, pos.y, pos.z)
       this.scene.add(sprite)
-      this._pickups.push({ sprite, baseY: pos.y, cooldown: 0, active: true })
+      this._pickups.push({ sprite, baseY: pos.y, cooldown: 0, active: true, healAmount: isFloor3 ? HEAL_AMOUNT * 2 : HEAL_AMOUNT })
+    }
+
+    const superPositions = [
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * hw, y: 1.5, z: (Math.random() * 2 - 1) * hd },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: (Math.random() * 2 - 1) * f2Half, y: FLOOR2_Y + 1.5, z: (Math.random() * 2 - 1) * f2Half },
+      { x: 0, y: FLOOR3_Y + 2.5, z: 5 },
+    ]
+
+    const superMat = new THREE.SpriteMaterial({ map: superTex, transparent: true, depthWrite: false })
+    for (const pos of superPositions) {
+      const sprite = new THREE.Sprite(superMat)
+      sprite.scale.set(3.75, 3.75, 1)
+      sprite.position.set(pos.x, pos.y, pos.z)
+      this.scene.add(sprite)
+      this._superPickups.push({ sprite, baseY: pos.y, cooldown: 0, active: true })
     }
   }
 
   _updatePickups(dt) {
     this._pickupTime += dt
+
     for (const p of this._pickups) {
       if (!p.active) {
         p.cooldown -= dt
@@ -492,9 +555,10 @@ export class DerbyGame {
         const dy = car.position.y - p.sprite.position.y
         const dz = car.position.z - p.sprite.position.z
         if (dx * dx + dy * dy + dz * dz < PICKUP_RADIUS * PICKUP_RADIUS) {
-          car.health = Math.min(MAX_HEALTH, car.health + HEAL_AMOUNT)
+          const heal = p.healAmount || HEAL_AMOUNT
+          car.health = Math.min(MAX_HEALTH, car.health + heal)
           window.dispatchEvent(new CustomEvent('car:hit', {
-            detail: { slot: car.slot, health: car.health, damage: -HEAL_AMOUNT, pos: car.position }
+            detail: { slot: car.slot, health: car.health, damage: -heal, pos: car.position }
           }))
           p.active = false
           p.sprite.visible = false
@@ -503,14 +567,56 @@ export class DerbyGame {
         }
       }
     }
+
+    for (const p of this._superPickups) {
+      if (!p.active) {
+        p.cooldown -= dt
+        if (p.cooldown <= 0) {
+          p.active = true
+          p.sprite.visible = true
+        }
+        continue
+      }
+      p.sprite.position.y = p.baseY + Math.sin(this._pickupTime * 2.5) * 0.4
+      p.sprite.material.rotation = Math.sin(this._pickupTime * 1.5) * 0.15
+
+      for (const car of this.cars) {
+        if (!car || car.eliminated) continue
+        const dx = car.position.x - p.sprite.position.x
+        const dy = car.position.y - p.sprite.position.y
+        const dz = car.position.z - p.sprite.position.z
+        if (dx * dx + dy * dy + dz * dz < PICKUP_RADIUS * PICKUP_RADIUS) {
+          car.superShots = Math.min(car.superShots + SUPER_SHOT_GRANT, SUPER_SHOT_GRANT)
+          window.dispatchEvent(new CustomEvent('car:supershot_update', {
+            detail: { slot: car.slot, superShots: car.superShots }
+          }))
+          p.active = false
+          p.sprite.visible = false
+          p.cooldown = PICKUP_RESPAWN * 3
+          break
+        }
+      }
+    }
   }
 
   _disposePickups() {
-    for (const p of this._pickups) {
-      this.scene.remove(p.sprite)
-      p.sprite.material.dispose()
+    if (this._pickups.length) {
+      this._pickups[0].sprite.material.dispose()
+      for (const p of this._pickups) this.scene.remove(p.sprite)
     }
     this._pickups = []
+    if (this._superPickups.length) {
+      this._superPickups[0].sprite.material.dispose()
+      for (const p of this._superPickups) this.scene.remove(p.sprite)
+    }
+    this._superPickups = []
+  }
+
+  _endMatch(winnerSlot) {
+    this._winner = winnerSlot
+    this._disposePickups()
+    this._setState(DerbyState.FINISHED)
+    window.dispatchEvent(new CustomEvent('derby:winner', { detail: { slot: winnerSlot } }))
   }
 
   get localCar() {
@@ -520,7 +626,8 @@ export class DerbyGame {
     }
     return null
   }
-  get allCars()   { return this._allCarsCache }
-  get winner()    { return this._winner }
-  get aiKills()   { return this._aiTotalKilled }
+  get allCars()       { return this._allCarsCache }
+  get winner()        { return this._winner }
+  get aiKills()       { return this._aiTotalKilled }
+  get timeRemaining() { return this._timeRemaining }
 }

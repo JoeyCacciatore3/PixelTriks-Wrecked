@@ -57,7 +57,10 @@ export class ResultsUI {
     const sorted = [...cars].sort((a, b) => {
       if (a.eliminated && !b.eliminated) return 1
       if (!a.eliminated && b.eliminated) return -1
-      return a.slot - b.slot
+      const sa = derby.playerStats[a.slot] || { kills: 0, damageDealt: 0 }
+      const sb = derby.playerStats[b.slot] || { kills: 0, damageDealt: 0 }
+      if (sb.kills !== sa.kills) return sb.kills - sa.kills
+      return sb.damageDealt - sa.damageDealt
     })
 
     ranksEl.innerHTML = `

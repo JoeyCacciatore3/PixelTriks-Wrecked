@@ -12,6 +12,7 @@ export class Physics {
     this.world      = null;
     this.RAPIER     = RAPIER;
     this.initialized = false;
+    this._accumulator = 0;
   }
 
   async init() {
@@ -120,7 +121,7 @@ export class Physics {
 
   step(dt) {
     if (!this.initialized) return
-    this._accumulator = (this._accumulator || 0) + Math.min(dt, 0.05)
+    this._accumulator += Math.min(dt, 0.05)
     let steps = 0
     while (this._accumulator >= FIXED_STEP && steps < MAX_SUBSTEPS) {
       this.world.timestep = FIXED_STEP

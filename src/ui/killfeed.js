@@ -13,17 +13,21 @@ export class KillFeed {
     `
     document.body.appendChild(this._el)
     this._lastAttacker = {}
+    this._names = {}
 
     window.addEventListener('car:hit', (e) => {
-      if (e.detail?.attackerSlot !== undefined) {
-        this._lastAttacker[e.detail.slot] = e.detail.attackerSlot
+      const d = e.detail
+      if (d.name) this._names[d.slot] = d.name
+      if (d.attackerSlot !== undefined) {
+        this._lastAttacker[d.slot] = d.attackerSlot
       }
     })
 
     window.addEventListener('car:eliminated', (e) => {
-      const victimSlot = e.detail.slot
-      const attackerSlot = this._lastAttacker[victimSlot]
-      this._addEntry(attackerSlot, victimSlot)
+      const d = e.detail
+      if (d.name) this._names[d.slot] = d.name
+      const attackerSlot = this._lastAttacker[d.slot]
+      this._addEntry(attackerSlot, d.slot)
     })
   }
 
@@ -35,11 +39,11 @@ export class KillFeed {
       white-space:nowrap;opacity:1;transition:opacity 0.5s;backdrop-filter:blur(4px);
     `
 
-    const victimName = CAR_NAMES[victimSlot % CAR_NAMES.length] || 'UNKNOWN'
+    const victimName = this._names[victimSlot] || CAR_NAMES[victimSlot % CAR_NAMES.length] || 'UNKNOWN'
     const victimColor = CAR_COLORS[victimSlot % CAR_COLORS.length] || '#fff'
 
     if (attackerSlot !== undefined && attackerSlot !== victimSlot) {
-      const attackerName = CAR_NAMES[attackerSlot % CAR_NAMES.length] || 'UNKNOWN'
+      const attackerName = this._names[attackerSlot] || CAR_NAMES[attackerSlot % CAR_NAMES.length] || 'UNKNOWN'
       const attackerColor = CAR_COLORS[attackerSlot % CAR_COLORS.length] || '#fff'
       entry.innerHTML = `<span style="color:${attackerColor}">${attackerName}</span> <span style="color:#ffffff">WRECKED</span> <span style="color:${victimColor}">${victimName}</span>`
     } else {

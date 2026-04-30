@@ -23,6 +23,28 @@ export class Minimap {
     `
     document.body.appendChild(this._canvas)
     this._ctx = this._canvas.getContext('2d')
+
+    this._soundBtn = document.createElement('button')
+    this._soundBtn.textContent = '🔊'
+    this._soundBtn.style.cssText = `
+      position:fixed;top:${MAP_SIZE + 18}px;right:calc(12px + env(safe-area-inset-right, 0px));z-index:6;
+      width:36px;height:36px;border:1px solid rgba(255,255,255,0.18);
+      background:rgba(0,0,0,0.55);color:#fff;font-size:18px;
+      border-radius:50%;cursor:pointer;padding:0;line-height:36px;text-align:center;
+      box-shadow:0 0 12px rgba(0,0,0,0.6);
+    `
+    this._soundBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation()
+      if (this._audio) {
+        this._audio.setMuted(!this._audio.muted)
+        this._soundBtn.textContent = this._audio.muted ? '🔇' : '🔊'
+      }
+    })
+    document.body.appendChild(this._soundBtn)
+  }
+
+  setAudio(audio) {
+    this._audio = audio
   }
 
   update(derby) {
@@ -100,6 +122,12 @@ export class Minimap {
     ctx.restore()
   }
 
-  hide() { if (this._canvas) this._canvas.style.display = 'none' }
-  show() { if (this._canvas) this._canvas.style.display = '' }
+  hide() {
+    if (this._canvas) this._canvas.style.display = 'none'
+    if (this._soundBtn) this._soundBtn.style.display = 'none'
+  }
+  show() {
+    if (this._canvas) this._canvas.style.display = ''
+    if (this._soundBtn) this._soundBtn.style.display = ''
+  }
 }

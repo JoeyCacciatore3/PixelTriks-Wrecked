@@ -119,10 +119,11 @@ Before writing code for any feature, research current best practices for the spe
 Load the matching domain skill before implementing. Skills inject research-backed patterns, pitfalls, and techniques that general knowledge lacks. **Always load skills before writing code — never skip this step.**
 
 **Primary skills for this project:**
+- **game-physics-geometry** — Rapier physics (joints, motors, character controllers, collision detection), procedural geometry (BufferGeometry, CSG, splines), game math (quaternions, interpolation, springs), steering behaviors, XPBD soft bodies. **Load for any physics tuning, collision fixes, car handling, AI steering, arena geometry, or game math work.**
 - **threejs** — Three.js scene architecture, renderer optimization, GLSL shaders, post-processing, glTF pipeline, asset compression, PBR materials. Use when building or optimizing 3D scenes.
 - **r3f-game-dev** — React Three Fiber patterns, ECS with bitECS, Rapier physics, game loop architecture, input handling. Use when building 3D scenes or games.
-- **security** — OWASP top 10, input validation, auth patterns, secrets management, CSP, Node.js security hardening. Use when reviewing security or implementing auth.
 - **code-quality** — SOLID principles, refactoring patterns, code smells, performance profiling, bundling, lazy loading, Web Workers, caching. Use when reviewing code quality or optimizing performance.
+- **security** — OWASP top 10, input validation, auth patterns, secrets management, CSP, Node.js security hardening. Use when reviewing security or implementing auth.
 - **testing-excellence** — Vitest patterns, test architecture, mocking strategies, integration vs unit, snapshot testing. Use when writing or reviewing tests.
 
 **Supporting skills (load when the task touches these domains):**
@@ -132,12 +133,12 @@ Load the matching domain skill before implementing. Skills inject research-backe
 - **sqlite-patterns** — SQLite WAL mode, FTS5 full-text search, JSON support, migration patterns. Use when working with SQLite databases.
 - **claude-api** — Anthropic SDK patterns, streaming, tool use, prompt caching, batch API, token management. Use when building Claude API integrations.
 
-**Skill protocol:**
-1. Match the task to available skills before writing any code
-2. Load the skill — it activates automatically when the task matches the skill description
-3. If no skill matches, research the domain via WebSearch before implementing
-4. Cross-reference skill patterns against the installed package versions in package.json
-5. When multiple skills apply (e.g., threejs + code-quality for a render optimization), load both
+**Skill protocol (mandatory — never skip):**
+1. **Before writing any code**, identify ALL matching skills for the task. Physics work → game-physics-geometry + threejs. Rendering → threejs. AI behavior → game-physics-geometry (steering) + r3f-game-dev. Performance → code-quality. Load every relevant skill.
+2. Load skills first, then WebSearch for current best practices on the specific technique (e.g., "Rapier3D spring damper tuning", "Three.js InstancedMesh batching"). Research is not optional — training data goes stale.
+3. Cross-reference skill patterns and search results against installed package versions in package.json.
+4. When multiple skills apply, load ALL of them — not just the primary one.
+5. If no skill matches, WebSearch is the minimum. Never implement from memory alone on non-trivial work.
 
 ### Verify Visually
 Type-checking proves code correctness, not feature correctness. After any visual or gameplay change:

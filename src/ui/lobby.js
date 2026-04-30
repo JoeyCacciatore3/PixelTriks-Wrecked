@@ -71,7 +71,7 @@ export class LobbyUI {
         </div>
 
         <div class="lobby-controls-hint">
-          ${isMobile ? 'LEFT STICK: DRIVE · FIRE / BOOST BUTTONS' : 'W/S THROTTLE · A/D STEER · SPACE BOOST · ENTER FIRE · M MUTE'}
+          ${isMobile ? 'LEFT STICK: DRIVE · FIRE / BOOST / SUPERSHOT BUTTONS' : 'W/S THROTTLE · A/D STEER · SPACE BOOST · ENTER FIRE · Q SUPERSHOT · M MUTE'}
         </div>
 
         <a class="portal-btn" href="https://vibej.am/portal/2026" target="_blank" rel="noopener">
@@ -240,25 +240,25 @@ export class LobbyUI {
       .lobby-wrap {
         text-align: center; padding: 24px 20px; max-width: 620px; width: 100%;
         background: rgba(0, 0, 0, 0.6); border-radius: 20px;
-        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
         margin: auto;
       }
       .lobby-logo {
         font-size: clamp(32px, 8vw, 64px); font-weight: 900; letter-spacing: 0.05em;
         margin-bottom: 12px; line-height: 1.1;
       }
-      .logo-pt { font-size: 0.4em; color: #ffffff; text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4); display: block; margin-bottom: -10px; }
-      .logo-wrecked { color: #ef4444; text-shadow: 4px 4px 0 #eab308, 0 0 20px rgba(239,68,68,0.5); }
+      .logo-pt { font-size: 0.4em; color: #ffffff; text-shadow: 2px 2px 0 #eab308; display: block; margin-bottom: -10px; }
+      .logo-wrecked { color: #ef4444; text-shadow: 4px 4px 0 #eab308; }
       .lobby-tagline {
         font-size: clamp(11px, 2.5vw, 14px); letter-spacing: 0.25em; color: #ffffff; margin-top: 8px; margin-bottom: 36px;
-        font-weight: 900; text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4);
+        font-weight: 900; text-shadow: 2px 2px 0 #eab308;
       }
       .lobby-mp-wrap { max-width: 460px; margin: 0 auto 20px; }
       .lobby-mp-row { display: flex; gap: 12px; }
       .lobby-mp-row .lobby-btn { flex: 1; }
       .lobby-toast {
         font-size: clamp(16px, 4vw, 28px); font-weight: 900; letter-spacing: 0.15em;
-        color: #ef4444; text-shadow: 2px 2px 0 #eab308, 0 0 16px rgba(239,68,68,0.5);
+        color: #ef4444; text-shadow: 2px 2px 0 #eab308;
         text-align: center; margin: 16px auto; padding: 12px;
       }
       @keyframes toast-fade {
@@ -268,13 +268,13 @@ export class LobbyUI {
         75% { opacity: 1; }
         100% { opacity: 0; transform: scale(0.9); }
       }
-      .lobby-section-title { font-size: clamp(10px, 2.5vw, 12px); letter-spacing: 0.3em; color: #ffffff; margin-bottom: 12px; font-weight: 900; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3); }
+      .lobby-section-title { font-size: clamp(10px, 2.5vw, 12px); letter-spacing: 0.3em; color: #ffffff; margin-bottom: 12px; font-weight: 900; text-shadow: 1px 1px 0 #eab308; }
       .lobby-btn {
         display: block; width: 100%; padding: 14px; margin-top: 10px;
         background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 12px;
         color: #ffffff; font-family: inherit; font-size: clamp(12px, 3vw, 14px); letter-spacing: 0.15em; font-weight: 900;
         cursor: pointer; transition: transform 0.1s; box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
-        text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4);
+        text-shadow: 2px 2px 0 #eab308;
       }
       .lobby-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.4); }
       .lobby-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
@@ -285,14 +285,14 @@ export class LobbyUI {
         background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
         color: #ffffff; font-family: inherit; font-size: 14px; letter-spacing: 0.2em; font-weight: 900;
         text-align: center; text-transform: uppercase; box-shadow: inset 2px 2px 0 rgba(0,0,0,0.1);
-        text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4);
+        text-shadow: 2px 2px 0 #eab308;
       }
       .lobby-input:focus { outline: none; border-color: #3b82f6; }
       .room-code-display {
         margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.1);
         border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; color: #ffffff; font-weight: 900;
         font-size: 14px; letter-spacing: 0.2em; box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
-        text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4);
+        text-shadow: 2px 2px 0 #eab308;
       }
       .lobby-error {
         margin: 12px auto; max-width: 400px; padding: 10px;
@@ -305,29 +305,30 @@ export class LobbyUI {
       .slot-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; box-shadow: 3px 3px 0 rgba(0,0,0,0.3); }
       .slot-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
       .slot-name { flex: 1; font-size: 12px; font-weight: 900; letter-spacing: 0.1em; text-align: left; text-shadow: 1px 1px 0 rgba(0,0,0,0.6); }
-      .slot-status { font-size: 11px; font-weight: 900; letter-spacing: 0.15em; color: #ffffff; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3); }
+      .slot-status { font-size: 11px; font-weight: 900; letter-spacing: 0.15em; color: #ffffff; text-shadow: 1px 1px 0 #eab308; }
       .slot-status.occupied { color: #ffffff; }
       .lobby-countdown-wrap { margin-top: 20px; text-align: center; }
-      .lobby-countdown-label { font-size: clamp(14px, 3.5vw, 18px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; text-shadow: 2px 2px 0 #eab308, 0 0 10px rgba(234,179,8,0.4); }
+      .lobby-countdown-label { font-size: clamp(14px, 3.5vw, 18px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; text-shadow: 2px 2px 0 #eab308; }
       .lobby-countdown {
-        font-size: 96px; font-weight: 900; color: #ef4444; text-shadow: 4px 4px 0 #eab308, 0 0 20px rgba(239,68,68,0.5);
+        font-size: 96px; font-weight: 900; color: #ef4444; text-shadow: 4px 4px 0 #eab308;
         line-height: 1; margin: 10px 0;
         animation: pulse 1s infinite alternate;
+        will-change: transform;
       }
       @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
-      .lobby-countdown-sub { font-size: clamp(11px, 2.5vw, 13px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3); }
+      .lobby-countdown-sub { font-size: clamp(11px, 2.5vw, 13px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; text-shadow: 1px 1px 0 #eab308; }
       .host-btn-row { display: flex; gap: 12px; max-width: 460px; margin: 16px auto 0; justify-content: center; }
       .host-start-btn { flex: 1; max-width: 220px; font-size: 14px !important; padding: 16px !important; margin-top: 0 !important; }
       .leave-btn { flex: 1; max-width: 220px; font-size: 14px !important; padding: 16px !important; margin-top: 0 !important; background: rgba(239,68,68,0.15) !important; border-color: #ef4444 !important; color: #ff6b6b !important; }
       .lobby-solo-wrap { margin: 0 auto 4px; max-width: 280px; }
       .solo-btn { font-size: 13px !important; padding: 16px !important; margin-top: 0 !important; }
-      .lobby-separator { font-size: clamp(10px, 2.5vw, 12px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; margin: 18px 0 16px; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3); }
+      .lobby-separator { font-size: clamp(10px, 2.5vw, 12px); font-weight: 900; letter-spacing: 0.2em; color: #ffffff; margin: 18px 0 16px; text-shadow: 1px 1px 0 #eab308; }
       .lobby-mp-wrap .lobby-input { margin-top: 12px; }
-      .lobby-controls-hint { margin-top: 24px; font-size: clamp(9px, 2vw, 11px); font-weight: 900; letter-spacing: 0.12em; color: #ffffff; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3); }
+      .lobby-controls-hint { margin-top: 24px; font-size: clamp(9px, 2vw, 11px); font-weight: 900; letter-spacing: 0.12em; color: #ffffff; text-shadow: 1px 1px 0 #eab308; }
       .portal-btn {
         display: inline-block; margin-top: 20px;
         font-size: clamp(9px, 2vw, 11px); font-weight: 900; letter-spacing: 0.15em; color: #ffffff;
-        text-decoration: none; transition: color 0.15s; text-shadow: 1px 1px 0 #eab308, 0 0 6px rgba(234,179,8,0.3);
+        text-decoration: none; transition: color 0.15s; text-shadow: 1px 1px 0 #eab308;
       }
       .portal-btn:hover { color: #22c55e; }
       .hidden { display: none !important; }

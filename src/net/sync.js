@@ -38,18 +38,21 @@ export class SyncManager {
     const rot = car.rotation
     const vel = car.velocity
 
-    this.room.broadcast('move', {
+    const payload = {
       slot: this.room.mySlot,
       pos:  { x: pos.x, y: pos.y, z: pos.z },
       rot:  { x: rot.x, y: rot.y, z: rot.z, w: rot.w },
       vel:  { x: vel.x, y: vel.y, z: vel.z },
       hp:   car.health
-    })
+    }
+    if (this.room.isHost) payload.tr = this.derby.timeRemaining
+    this.room.broadcast('move', payload)
   }
 
   _onMove(data, from) {
-    const { slot, pos, rot, vel, hp } = data
+    const { slot, pos, rot, vel, hp, tr } = data
     if (slot === this.room.mySlot) return
+    if (tr !== undefined) this.derby._timeRemaining = tr
 
     if (!this._snapBuf[slot]) this._snapBuf[slot] = []
     const buf = this._snapBuf[slot]

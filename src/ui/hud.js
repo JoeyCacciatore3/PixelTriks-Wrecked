@@ -9,6 +9,7 @@ export class DerbyHUD {
     this._elapsed   = 0
     this._barsContainer = null
     this._lastCd     = -1
+    this._lastTimerSec = -1
 
     this._build()
     window.addEventListener('car:eliminated', (e) => this._onEliminated(e.detail.slot))
@@ -23,12 +24,14 @@ export class DerbyHUD {
     this._el.id = 'derby-hud'
     this._el.innerHTML = `
       <div id="hud-health-bars"></div>
+      <div id="hud-timer" class="hud-timer hidden"></div>
       <div id="hud-countdown" class="hud-countdown hidden"></div>
     `
     document.body.appendChild(this._el)
     this._injectStyles()
 
     this._barsContainer = document.getElementById('hud-health-bars')
+    this._timerEl = document.getElementById('hud-timer')
     this._countdownEl = document.getElementById('hud-countdown')
   }
 
@@ -69,6 +72,31 @@ export class DerbyHUD {
       if (car.eliminated) bar.wrap.classList.add('dead')
     }
 
+    this._updateTimer(derby.timeRemaining)
+  }
+
+  _updateTimer(remaining) {
+    if (!this._timerEl) return
+    const sec = Math.max(0, Math.ceil(remaining))
+    if (sec === this._lastTimerSec) return
+    this._lastTimerSec = sec
+    const m = Math.floor(sec / 60)
+    const s = sec % 60
+    this._timerEl.textContent = m + ':' + String(s).padStart(2, '0')
+    if (sec <= 10) {
+      this._timerEl.classList.add('timer-critical')
+    } else {
+      this._timerEl.classList.remove('timer-critical')
+    }
+  }
+
+  showTimer() {
+    if (this._timerEl) this._timerEl.classList.remove('hidden')
+    this._lastTimerSec = -1
+  }
+
+  hideTimer() {
+    if (this._timerEl) this._timerEl.classList.add('hidden')
   }
 
   showCountdown(secs) {
@@ -104,6 +132,21 @@ export class DerbyHUD {
     const s = document.createElement('style');
     s.textContent = `
       #derby-hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; font-family: ui-monospace, monospace; }
+
+      .hud-timer {
+        position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+        font-size: 24px; font-weight: 900; color: #fff;
+        text-shadow: 2px 2px 0 rgba(0,0,0,0.6), 0 0 10px rgba(0,0,0,0.4);
+        letter-spacing: 0.05em;
+      }
+      .hud-timer.timer-critical {
+        color: #ef4444;
+        animation: timer-pulse 0.5s ease-in-out infinite alternate;
+      }
+      @keyframes timer-pulse {
+        0% { opacity: 1; transform: translateX(-50%) scale(1); }
+        100% { opacity: 0.7; transform: translateX(-50%) scale(1.1); }
+      }
 
       #hud-health-bars {
         position: absolute; top: 12px; left: calc(12px + env(safe-area-inset-left, 0px));

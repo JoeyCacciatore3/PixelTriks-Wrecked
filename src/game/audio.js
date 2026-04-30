@@ -22,6 +22,10 @@ export class AudioBus {
     this.masterGain.gain.value = this.volume;
     this.masterGain.connect(this.ctx.destination);
 
+    this._sfxGain = this.ctx.createGain()
+    this._sfxGain.gain.value = 0.4
+    this._sfxGain.connect(this.masterGain)
+
     const unlock = () => {
       if (this.ctx.state === 'suspended') this.ctx.resume();
       this._unlocked = true;
@@ -38,6 +42,7 @@ export class AudioBus {
     })
 
     this._wireEvents();
+    this._startMusic();
   }
 
   _wireEvents() {
@@ -78,7 +83,7 @@ export class AudioBus {
     if (!this.ctx || this.muted || !this._unlocked) return;
     const fn = SOUNDS[name];
     if (!fn) return;
-    try { fn(this.ctx, this.masterGain, opts); }
+    try { fn(this.ctx, this._sfxGain, opts); }
     catch (_) {}
   }
 
@@ -93,7 +98,7 @@ export class AudioBus {
       this._engineGain = this.ctx.createGain()
       this._engineGain.gain.value = 0
       this._engineOsc.connect(this._engineGain)
-      this._engineGain.connect(this.masterGain)
+      this._engineGain.connect(this._sfxGain)
       this._engineOsc.start()
     }
 
@@ -118,6 +123,41 @@ export class AudioBus {
     this.muted = m;
     if (this.masterGain) this.masterGain.gain.value = m ? 0 : this.volume;
     if (m && this._engineGain) this._engineGain.gain.value = 0
+  }
+
+  _startMusic() {
+    if (this._musicStarted) return
+    this._musicStarted = true
+
+    const tryPlay = () => {
+      if (!this._unlocked || !this.ctx) return
+      fetch('music.mp3')
+        .then(r => r.arrayBuffer())
+        .then(buf => this.ctx.decodeAudioData(buf))
+        .then(decoded => {
+          this._musicGain = this.ctx.createGain()
+          this._musicGain.gain.value = 0.35
+          this._musicGain.connect(this.masterGain)
+
+          const src = this.ctx.createBufferSource()
+          src.buffer = decoded
+          src.loop = true
+          src.connect(this._musicGain)
+          src.start()
+          this._musicSrc = src
+        })
+        .catch(() => {})
+
+      window.removeEventListener('pointerdown', tryPlay)
+      window.removeEventListener('keydown', tryPlay)
+    }
+
+    if (this._unlocked) {
+      tryPlay()
+    } else {
+      window.addEventListener('pointerdown', tryPlay, { once: true, passive: true })
+      window.addEventListener('keydown', tryPlay, { once: true })
+    }
   }
 }
 

@@ -21,12 +21,14 @@ const FLOOR3_H = 15.0
 const FLOOR3_THICK = 0.4
 export const FLOOR3_HALF = 10
 
+const F2_RAMP_W = 17
+
 // Spawn positions (slot 0-3) + facing angles — spread for bigger map
 export const SPAWN_POINTS = [
-  { x: -75, y: 0.82, z: -95, angle: Math.PI * 0.25 },
-  { x:  75, y: 0.82, z:  95, angle: Math.PI * 1.25 },
-  { x:  75, y: 0.82, z: -95, angle: Math.PI * 0.75 },
-  { x: -75, y: 0.82, z:  95, angle: Math.PI * 1.75 },
+  { x: -65, y: 0.82, z: -85, angle: -2.489 },
+  { x:  65, y: 0.82, z:  85, angle: 0.653 },
+  { x:  65, y: 0.82, z: -85, angle: 2.489 },
+  { x: -65, y: 0.82, z:  85, angle: -0.653 },
 ]
 
 export class Arena {
@@ -66,7 +68,7 @@ export class Arena {
     const hd = ARENA_D / 2
     const H     = 50
     const T     = 2
-    const INSET = 0.5
+    const INSET = 1.5
     const cy = H / 2
     const innerX = hw - INSET
     const innerZ = hd - INSET
@@ -172,8 +174,9 @@ export class Arena {
         const y0 = r * (1 - Math.cos(phi0)) - SINK
         const y1 = r * (1 - Math.cos(phi1)) - SINK
         // Outer face: same Y, pushed laterally toward wall plane
-        const outerOffset0 = Math.max(0, offset0 - WEDGE_DEPTH)
-        const outerOffset1 = Math.max(0, offset1 - WEDGE_DEPTH)
+        const MIN_THICK = 0.5
+        const outerOffset0 = offset0 < MIN_THICK ? 0 : Math.max(0, offset0 - Math.max(WEDGE_DEPTH, MIN_THICK))
+        const outerOffset1 = offset1 < MIN_THICK ? 0 : Math.max(0, offset1 - Math.max(WEDGE_DEPTH, MIN_THICK))
 
         const tStart = seg.from
         const tEnd = seg.to
@@ -271,7 +274,7 @@ export class Arena {
   }
 
   _buildSecondFloor() {
-    const platHalf = 45
+    const platHalf = 60
     const trimMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
 
     const tex = rampTexture(true)
@@ -311,15 +314,14 @@ export class Arena {
 
   _buildFloorRamps() {
     const rampTex = rampTexture(true);
-    const f2RampW = 11.5
-    rampTex.repeat.set(f2RampW / 5, 22 / 5);
+    rampTex.repeat.set(F2_RAMP_W / 5, 22 / 5);
     rampTex.needsUpdate = true;
     const rampMat = new THREE.MeshStandardMaterial({ map: rampTex, roughness: 0.6, metalness: 0.1, color: 0xffffff });
 
     const rampLen = 22
     const rampHalfLen = rampLen / 2
     const tilt = Math.asin((FLOOR2_H + 0.5) / rampLen)
-    const platHalf = 45
+    const platHalf = 60
     const horizLen = Math.cos(tilt) * rampHalfLen
     const rise = Math.sin(tilt) * rampHalfLen
     const centerY = rise - 0.5
@@ -334,7 +336,7 @@ export class Arena {
     const floorRailMat = new THREE.MeshBasicMaterial({ color: 0xeab308 })
 
     for (const r of accessRamps) {
-      const rampGeom = new THREE.BoxGeometry(f2RampW, 0.3, rampLen);
+      const rampGeom = new THREE.BoxGeometry(F2_RAMP_W, 0.3, rampLen);
       const mesh = new THREE.Mesh(rampGeom, rampMat);
 
       const rampGroup = new THREE.Group();
@@ -346,7 +348,7 @@ export class Arena {
       for (const side of [-1, 1]) {
         const railGeom = new THREE.BoxGeometry(0.2, 0.5, rampLen);
         const rail = new THREE.Mesh(railGeom, floorRailMat);
-        rail.position.set(side * (f2RampW / 2 + 0.1), 0.25, 0);
+        rail.position.set(side * (F2_RAMP_W / 2 + 0.1), 0.25, 0);
         rail.rotation.x = tilt;
         rampGroup.add(rail);
       }
@@ -358,7 +360,7 @@ export class Arena {
         .setRotation(makeQuaternion(r.rotY, tilt));
       const rampBody = this.physics.world.createRigidBody(rampBodyDesc);
       this.physics.world.createCollider(
-        this.physics.RAPIER.ColliderDesc.cuboid(f2RampW / 2, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
+        this.physics.RAPIER.ColliderDesc.cuboid(F2_RAMP_W / 2, 0.2, rampHalfLen).setFriction(0.05).setRestitution(0.2),
         rampBody
       );
     }
@@ -384,15 +386,36 @@ export class Arena {
       friction: 0.4, restitution: 0.3
     })
 
+    const wingLen = 50
+    const wings = [
+      { cx: -(FLOOR3_HALF + wingLen / 2), cz: 0 },
+      { cx:  (FLOOR3_HALF + wingLen / 2), cz: 0 },
+    ]
+    for (const w of wings) {
+      const wGeom = new THREE.BoxGeometry(wingLen, FLOOR3_THICK, FLOOR3_HALF * 2)
+      const wMesh = new THREE.Mesh(wGeom, floorMat)
+      wMesh.position.set(w.cx, FLOOR3_H, w.cz)
+      wMesh.castShadow = !isMobile
+      wMesh.receiveShadow = !isMobile
+      this.scene.add(wMesh)
+
+      this.physics.addStaticBox({
+        cx: w.cx, cy: FLOOR3_H, cz: w.cz,
+        hw: wingLen / 2, hh: FLOOR3_THICK / 2, hd: FLOOR3_HALF,
+        friction: 0.4, restitution: 0.3
+      })
+    }
+
     const trimH = 0.08
     const trimW = 0.15
     const trimY = FLOOR3_H + FLOOR3_THICK / 2 + 0.04
     const f3 = FLOOR3_HALF
+    const totalX = FLOOR3_HALF + wingLen
     const f3Edges = [
-      { w: f3 * 2, d: trimW, ox: 0, oz: -f3 + trimW / 2 },
-      { w: f3 * 2, d: trimW, ox: 0, oz:  f3 - trimW / 2 },
-      { w: trimW, d: f3 * 2, ox: -f3 + trimW / 2, oz: 0 },
-      { w: trimW, d: f3 * 2, ox:  f3 - trimW / 2, oz: 0 },
+      { w: totalX * 2, d: trimW, ox: 0, oz: -f3 + trimW / 2 },
+      { w: totalX * 2, d: trimW, ox: 0, oz:  f3 - trimW / 2 },
+      { w: trimW, d: f3 * 2, ox: -totalX + trimW / 2, oz: 0 },
+      { w: trimW, d: f3 * 2, ox:  totalX - trimW / 2, oz: 0 },
     ]
     for (const e of f3Edges) {
       const tg = new THREE.BoxGeometry(e.w, trimH, e.d)
@@ -775,7 +798,7 @@ export class Arena {
     const f2tilt = Math.asin((FLOOR2_H + 0.5) / 22)
     const f2Rise = Math.sin(f2tilt) * 11
     const f2Horiz = Math.cos(f2tilt) * 11
-    const platHalf = 45
+    const platHalf = 60
 
     const floorRamps = [
       { x: 0,                       z: -(platHalf + f2Horiz), dirX: 0,  dirZ: 1 },
@@ -788,9 +811,9 @@ export class Arena {
       const shiftAmt = f2Horiz * 0.2
       this.physics.addStaticBox({
         cx: r.x + r.dirX * shiftAmt, cy: fillH / 2, cz: r.z + r.dirZ * shiftAmt,
-        hw: r.dirZ !== 0 ? 3.625 : f2Horiz * 0.2,
+        hw: r.dirZ !== 0 ? F2_RAMP_W / 2 : f2Horiz * 0.2,
         hh: fillH / 2,
-        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : 3.625,
+        hd: r.dirZ !== 0 ? f2Horiz * 0.2 : F2_RAMP_W / 2,
         friction: 0.1, restitution: 0.1
       })
     }

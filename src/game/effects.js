@@ -204,6 +204,7 @@ export class Effects {
     window.addEventListener('car:land',       (e) => this._onLand(e.detail));
     window.addEventListener('car:fire',       (e) => this._onFire(e.detail));
     window.addEventListener('barrel:explode', (e) => this._onBarrelExplode(e.detail));
+    window.addEventListener('supershot:explode', (e) => this._onSuperExplode(e.detail));
     this._scene = scene;
     this._localSlot = -1;
   }
@@ -422,6 +423,30 @@ export class Effects {
         const elapsed = performance.now() - start
         if (elapsed >= 400) { this._scene.remove(light); light.dispose(); return }
         light.intensity = 6 * (1 - elapsed / 400)
+        requestAnimationFrame(fade)
+      }
+      requestAnimationFrame(fade)
+    }
+  }
+
+  _onSuperExplode(d) {
+    if (!d?.pos) return
+    this._spawnExplosionSprite(d.pos, 16, 800)
+    this._burst(d.pos, 50, 0xffcc00, { speed: 16, lifetime: 1.0, upBias: 5 })
+    this._burst(d.pos, 25, 0xff6600, { speed: 10, lifetime: 0.7, upBias: 3 })
+    this._burst(d.pos, 15, 0xffffff, { speed: 8, lifetime: 1.2, gravity: -8 })
+    this.camera.shake(0.7)
+    this._flash(0.4)
+
+    if (!this._mobile) {
+      const light = new THREE.PointLight(0xffcc00, 10, 40)
+      light.position.set(d.pos.x, d.pos.y + 1, d.pos.z)
+      this._scene.add(light)
+      const start = performance.now()
+      const fade = () => {
+        const elapsed = performance.now() - start
+        if (elapsed >= 600) { this._scene.remove(light); light.dispose(); return }
+        light.intensity = 10 * (1 - elapsed / 600)
         requestAnimationFrame(fade)
       }
       requestAnimationFrame(fade)

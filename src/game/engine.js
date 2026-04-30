@@ -43,10 +43,10 @@ export class Engine {
     key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
     key.shadow.camera.near = 0.5;
     key.shadow.camera.far = 500;
-    key.shadow.camera.left = -250;
-    key.shadow.camera.right = 250;
-    key.shadow.camera.top = 250;
-    key.shadow.camera.bottom = -250;
+    key.shadow.camera.left = -110;
+    key.shadow.camera.right = 110;
+    key.shadow.camera.top = 135;
+    key.shadow.camera.bottom = -135;
     this.scene.add(key);
 
     // Arena lights for base illumination
@@ -58,9 +58,6 @@ export class Engine {
     fill.position.set(-60, 30, -60);
     this.scene.add(fill);
 
-    const rim = new THREE.PointLight(0xffffff, 1.0, 60, 2);
-    rim.position.set(30, 6, 35);
-    this.scene.add(rim);
   }
 
   addGroundMesh({ size }) {

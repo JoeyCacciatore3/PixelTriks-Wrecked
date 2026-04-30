@@ -35,6 +35,60 @@ if (isPortalUser) {
   window.__isPortalUser = true
 }
 
+let _vfxOverlay = null
+
+function showEndMatchVFX(winnerSlot) {
+  _vfxOverlay = document.createElement('div')
+  _vfxOverlay.id = 'end-match-vfx'
+  _vfxOverlay.style.cssText = 'position:fixed;inset:0;z-index:15;pointer-events:none;overflow:hidden'
+
+  const isVictory = winnerSlot >= 0
+  const text = isVictory ? 'HUMANS WIN!' : 'OVERWHELMED!'
+  const color = isVictory ? '#22c55e' : '#ef4444'
+
+  const msg = document.createElement('div')
+  msg.textContent = text
+  msg.style.cssText = `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:ui-monospace,monospace;font-size:clamp(40px,10vw,80px);font-weight:900;color:${color};text-shadow:0 0 40px ${color}80,4px 4px 0 #1e293b;z-index:2;animation:cd-go-pop 1.2s cubic-bezier(0.34,1.56,0.64,1) both`
+  _vfxOverlay.appendChild(msg)
+
+  const count = isVictory ? 25 : 18
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div')
+    const angle = Math.random() * Math.PI * 2
+    const speed = 150 + Math.random() * 300
+    const vx = Math.cos(angle) * speed
+    const vy = Math.sin(angle) * speed
+    const size = 20 + Math.random() * 30
+    const delay = Math.random() * 0.3
+
+    if (isVictory) {
+      el.textContent = '❤'
+      el.style.cssText = `position:absolute;left:50%;top:50%;font-size:${size}px;opacity:0;animation:vfx-scatter 2s ${delay}s ease-out both;--vx:${vx}px;--vy:${vy}px`
+    } else {
+      el.style.cssText = `position:absolute;left:50%;top:50%;width:${size}px;height:${size}px;background:url(textures/explosion.png) center/contain no-repeat;opacity:0;animation:vfx-scatter 2s ${delay}s ease-out both;--vx:${vx}px;--vy:${vy}px`
+    }
+    _vfxOverlay.appendChild(el)
+  }
+
+  const style = document.createElement('style')
+  style.id = 'vfx-style'
+  style.textContent = `
+    @keyframes vfx-scatter {
+      0% { transform: translate(-50%,-50%) scale(0.3); opacity: 1; }
+      20% { opacity: 1; }
+      100% { transform: translate(calc(-50% + var(--vx)), calc(-50% + var(--vy))) scale(1); opacity: 0; }
+    }
+  `
+  document.head.appendChild(style)
+  document.body.appendChild(_vfxOverlay)
+}
+
+function removeEndMatchVFX() {
+  if (_vfxOverlay) { _vfxOverlay.remove(); _vfxOverlay = null }
+  const style = document.getElementById('vfx-style')
+  if (style) style.remove()
+}
+
 async function boot() {
   const loader = document.createElement('div')
   loader.id = 'boot-loader'
@@ -69,6 +123,7 @@ async function boot() {
   const hud     = new DerbyHUD()
   const results = new ResultsUI()
   const minimap = new Minimap()
+  minimap.setAudio(audio)
   const killfeed = new KillFeed()
   hud.hide()
   minimap.hide()
@@ -85,11 +140,17 @@ async function boot() {
     if (state === DerbyState.PLAYING) {
       lobby.hide()
       hud.show()
+      hud.showTimer()
       minimap.show()
     }
     if (state === DerbyState.FINISHED) {
       audio.stopEngine()
-      setTimeout(() => results.show(derby.winner, derby), 1200)
+      hud.hideTimer()
+      showEndMatchVFX(derby.winner)
+      setTimeout(() => {
+        removeEndMatchVFX()
+        results.show(derby.winner, derby)
+      }, 2000)
     }
   }
 
@@ -247,10 +308,8 @@ async function boot() {
         audio.updateEngine(derby.localCar.speed)
         audio.updateLowHealth(derby.localCar.health, MAX_HEALTH)
         effects.updateSpeedLines(derby.localCar.speed)
-        const boostBtn = input._actionEls?.jumpBtn
-        if (boostBtn) {
-          boostBtn.style.opacity = derby.localCar.boostCooldown > 0 ? '0.3' : '0.7'
-        }
+        input.setBoostReady(derby.localCar.boostCooldown <= 0)
+        input.setSuperShots(derby.localCar.superShots)
       }
     } else if (derby.state === DerbyState.COUNTDOWN) {
       derby.update(dt, null);

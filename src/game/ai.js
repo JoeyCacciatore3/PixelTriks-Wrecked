@@ -3,10 +3,6 @@ import * as THREE from 'three'
 const _aiQ = new THREE.Quaternion()
 const _aiFwd = new THREE.Vector3()
 
-// Simple chase-AI. Finds nearest valid target, steers toward it, drives.
-// Reverses out of stuck states, fires/boosts when in range, softly biases away
-// from arena walls. No ramp-seeking, no random swerve.
-
 const EVADE_HEALTH       = 30
 const RAM_DISTANCE       = 12
 const FIRE_DISTANCE      = 22
@@ -18,22 +14,20 @@ const THINK_INTERVAL     = 0.18
 const STUCK_SPEED        = 1
 const STUCK_TIME         = 0.6
 const REVERSE_TIME       = 0.7
-const WALL_MARGIN        = 10  // soft-bias zone, not a hard override
+const WALL_MARGIN        = 10
 
 const ARENA_HW = 100
 const ARENA_HD = 125
 
-const RAMP_SEEK_Y_THRESH = 4
-const PLAT_HALF = 45
-const RAMP_BASES = [
-  { x: 0,  z: -56, targetZ: -45 },
-  { x: 0,  z:  56, targetZ:  45 },
-  { x: -56, z: 0, targetX: -45 },
-  { x:  56, z: 0, targetX:  45 },
+const RAMP_BASES_F2 = [
+  { x: 0,   z: -81 },
+  { x: 0,   z:  81 },
+  { x: -81, z: 0 },
+  { x:  81, z: 0 },
 ]
-const FLOOR3_RAMP_BASES = [
-  { x: 0, z: -21 },
-  { x: 0, z:  21 },
+const RAMP_BASES_F3 = [
+  { x: 0, z: -32 },
+  { x: 0, z:  32 },
 ]
 
 const AI_NAMES = ['HAL-9K', 'R.U.S.T', 'DEMOLON', 'WREX-4']
@@ -47,8 +41,9 @@ export class AIDriver {
       throttle: false, brake: false,
       steerLeft: false, steerRight: false,
       boostPressed: false, firePressed: false,
-      steerAxis: 0, throttleAxis: 0,
-      endFrame() { this.boostPressed = false }
+      superShotPressed: false,
+      steerAxis: 0,
+      endFrame() { this.boostPressed = false; this.superShotPressed = false }
     }
 
     this._target       = null
@@ -58,6 +53,7 @@ export class AIDriver {
     this._stuckTimer   = 0
     this._reverseTimer = 0
     this._reverseSteer = 0
+    this._rampGoal     = null
     this.humansOnly    = false
   }
 
@@ -87,25 +83,37 @@ export class AIDriver {
     }
     this._target = nearest
     this._targetDist = nearestDist
-    this._rampGoal = null
+    const onRampF2 = p.y > 1.5 && p.y < 6.5
+    const onRampF3 = p.y > 9.5 && p.y < 14.5
 
-    if (nearest && nearest.position.y - p.y > RAMP_SEEK_Y_THRESH) {
-      let ramps = null
-      if (p.y < 3) ramps = RAMP_BASES
-      else if (p.y > 5 && p.y < 12) ramps = FLOOR3_RAMP_BASES
-      if (ramps) {
-        let bestRamp = null, bestDist = Infinity
-        for (const rb of ramps) {
-          const d = Math.hypot(p.x - rb.x, p.z - rb.z)
-          if (d < bestDist) { bestDist = d; bestRamp = rb }
+    if (onRampF2 || onRampF3) {
+      this._rampGoal = { x: 0, z: 0 }
+    } else {
+      this._rampGoal = null
+      const wantsUp = nearest && nearest.position.y - p.y > 4
+      if (wantsUp) {
+        let ramps = null
+        if (p.y < 3) ramps = RAMP_BASES_F2
+        else if (p.y > 6.5 && p.y < 12) ramps = RAMP_BASES_F3
+        if (ramps) {
+          let best = null, bestD = Infinity
+          for (const r of ramps) {
+            const d = Math.hypot(p.x - r.x, p.z - r.z)
+            if (d < bestD) { bestD = d; best = r }
+          }
+          if (best) this._rampGoal = best
         }
-        if (bestRamp) this._rampGoal = bestRamp
       }
     }
 
     this._input.firePressed = nearest != null && nearestDist < FIRE_DISTANCE
 
-    const isRamming = nearest != null && nearestDist < RAM_DISTANCE
+    if (this.car.superShots > 0 && nearest != null && nearestDist < FIRE_DISTANCE && Math.random() < 0.95) {
+      this._input.superShotPressed = true
+    }
+
+    const sameFloor = nearest && Math.abs(nearest.position.y - p.y) < 2
+    const isRamming = nearest != null && nearestDist < RAM_DISTANCE && sameFloor
     if (isRamming &&
         nearestDist > BOOST_DISTANCE_MIN &&
         nearestDist < BOOST_DISTANCE_MAX &&
@@ -147,7 +155,6 @@ export class AIDriver {
     const pos = this.car.position
     const tp  = this._target.position
 
-    // Evade: if low HP and target is close, drive directly away
     let goalX = tp.x, goalZ = tp.z
     if (this._rampGoal) {
       goalX = this._rampGoal.x
@@ -173,8 +180,6 @@ export class AIDriver {
     this._steerSmooth += (da - this._steerSmooth) * Math.min(1, STEER_SMOOTH * dt)
     let steer = THREE.MathUtils.clamp(this._steerSmooth * 4.0, -1, 1)
 
-    // Soft wall avoidance — gently bias steering toward the centre instead of
-    // hard-overriding it. Strength scales with how far past the margin we are.
     const overX = Math.abs(pos.x) - (ARENA_HW - WALL_MARGIN)
     if (overX > 0) {
       const bias = Math.min(1, overX / WALL_MARGIN)
@@ -190,6 +195,5 @@ export class AIDriver {
     inp.steerLeft  = steer < -0.15
     inp.steerRight = steer >  0.15
     inp.throttle   = true
-    if (Math.abs(steer) > 0.6) inp.throttleAxis = 0.7
   }
 }

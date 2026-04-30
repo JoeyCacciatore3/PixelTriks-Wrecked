@@ -24,6 +24,8 @@ const BULLET_LIFETIME  = 1.5
 const FIRE_RATE        = 0.2
 const BULLET_POOL_SIZE = 20
 export const BULLET_DAMAGE    = 20
+export const SUPER_BULLET_DAMAGE = 120
+export const SUPER_EXPLODE_RADIUS = 24
 const MAX_AMMO         = 6
 const AMMO_REGEN       = 1.0
 
@@ -33,10 +35,48 @@ const _tmpV2 = new THREE.Vector3()
 const _tmpV3 = new THREE.Vector3()
 const _bulletM4 = new THREE.Matrix4()
 const _bulletScale = new THREE.Vector3(1, 1, 1)
+const _superBulletScale = new THREE.Vector3(4, 4, 4)
 const _hideM4 = new THREE.Matrix4().makeScale(0, 0, 0)
 
 let _sharedCamera = null
 export function setCarCamera(cam) { _sharedCamera = cam }
+
+const _shared = {
+  bodyGeom: null, cabinGeom: null, bumperGeom: null,
+  hlGeom: null, tlGeom: null, wheelGeom: null, tireGeom: null, glowGeom: null,
+  hlMat: null, tlMat: null, wheelMat: null, tireMat: null,
+  bulletGeom: null, bulletMat: null,
+  refCount: 0,
+}
+
+function _initShared() {
+  if (_shared.refCount++ > 0) return
+  _shared.bodyGeom = new THREE.BoxGeometry(1.3, 0.68, 2.2)
+  _shared.cabinGeom = new THREE.BoxGeometry(0.96, 0.46, 1.05)
+  _shared.bumperGeom = new THREE.BoxGeometry(1.42, 0.38, 0.18)
+  _shared.hlGeom = new THREE.BoxGeometry(0.26, 0.14, 0.06)
+  _shared.tlGeom = new THREE.BoxGeometry(0.24, 0.12, 0.06)
+  _shared.wheelGeom = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 12)
+  _shared.tireGeom = new THREE.TorusGeometry(0.28, 0.1, 8, 12)
+  _shared.glowGeom = new THREE.PlaneGeometry(1.1, 2.0)
+  _shared.hlMat = new THREE.MeshBasicMaterial({ color: 0xffffff })
+  _shared.tlMat = new THREE.MeshBasicMaterial({ color: 0xff2200 })
+  _shared.wheelMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.4, metalness: 0.5 })
+  _shared.tireMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
+  _shared.bulletGeom = new THREE.PlaneGeometry(1.2, 1.2)
+  _shared.bulletMat = new THREE.MeshBasicMaterial({ map: bulletTexture(), transparent: true, depthWrite: false })
+}
+
+function _releaseShared() {
+  if (--_shared.refCount > 0) return
+  for (const key of Object.keys(_shared)) {
+    if (key === 'refCount') continue
+    const v = _shared[key]
+    if (v && typeof v.dispose === 'function') v.dispose()
+    _shared[key] = null
+  }
+  _shared.refCount = 0
+}
 
 const _skidDetail = { left: { x: 0, y: 0.02, z: 0 }, right: { x: 0, y: 0.02, z: 0 }, angle: 0 }
 const _skidEvent = new CustomEvent('car:skid', { detail: _skidDetail })
@@ -61,6 +101,7 @@ export class Car {
     this._spawnShield  = 0
     this._boostTimer   = 0
     this._boostCooldown = 0
+    this.superShots    = 0
 
     this._body    = null;
     this._collider = null;
@@ -69,6 +110,9 @@ export class Car {
     this._glowMat = null;
     this._bullets = [];
     this._bulletMesh = null;
+    this.activeBullets = 0;
+
+    this.displayName = CAR_NAMES[this.slot % CAR_NAMES.length]
 
     this._buildMesh();
     this._buildPhysics({ x: 0, y: 1.12, z: 0 });
@@ -76,7 +120,7 @@ export class Car {
   }
 
   get name() {
-    return this._isHuman ? CAR_NAMES[this.slot % CAR_NAMES.length] : 'AI';
+    return this.displayName;
   }
 
   get isHuman() { return this._isHuman; }
@@ -101,110 +145,87 @@ export class Car {
   }
 
   _buildMesh() {
-    this._group = new THREE.Group();
-    const colorHex = parseInt(this.color.replace('#', ''), 16);
+    _initShared()
+    this._group = new THREE.Group()
+    const colorHex = parseInt(this.color.replace('#', ''), 16)
 
-    // Main body
-    const bodyGeom = new THREE.BoxGeometry(1.3, 0.68, 2.2);
-    this._bodyMat  = new THREE.MeshStandardMaterial({
+    this._bodyMat = new THREE.MeshStandardMaterial({
       map: carBodyTexture(this.color, !this._isHuman), color: 0xffffff,
       roughness: 0.3, metalness: 0.1
-    });
-    const body = new THREE.Mesh(bodyGeom, this._bodyMat);
-    body.position.y = 0.1;
-    body.castShadow = !isMobile;
-    this._group.add(body);
-    this._bodyMesh = body;
+    })
+    const body = new THREE.Mesh(_shared.bodyGeom, this._bodyMat)
+    body.position.y = 0.1
+    body.castShadow = !isMobile
+    this._group.add(body)
+    this._bodyMesh = body
 
-    // Cabin
-    const cabinGeom = new THREE.BoxGeometry(0.96, 0.46, 1.05);
     const aiTex = !this._isHuman ? carBodyTexture(this.color, true) : null
     this._cabinMat = new THREE.MeshStandardMaterial({
       color: aiTex ? 0xffffff : 0x334155, roughness: 0.5, metalness: 0.1,
       map: aiTex || null
-    });
-    const cabin = new THREE.Mesh(cabinGeom, this._cabinMat);
-    cabin.position.set(0, 0.57, -0.12);
-    cabin.castShadow = !isMobile;
-    this._group.add(cabin);
+    })
+    const cabin = new THREE.Mesh(_shared.cabinGeom, this._cabinMat)
+    cabin.position.set(0, 0.57, -0.12)
+    cabin.castShadow = !isMobile
+    this._group.add(cabin)
 
-    // Front + rear bumpers
-    const bumperGeom = new THREE.BoxGeometry(1.42, 0.38, 0.18);
-    const bumperMat  = new THREE.MeshStandardMaterial({
+    this._bumperMat = new THREE.MeshStandardMaterial({
       color: aiTex ? 0xffffff : 0x475569, roughness: 0.7, metalness: 0.6,
       emissive: new THREE.Color(this.color), emissiveIntensity: 0,
       map: aiTex || null
-    });
-    const frontBumper = new THREE.Mesh(bumperGeom, bumperMat);
-    frontBumper.position.set(0, -0.04, -1.17);
-    this._group.add(frontBumper);
-    const rearBumper = frontBumper.clone();
-    rearBumper.position.set(0, -0.04, 1.17);
-    this._group.add(rearBumper);
-    this._bumperMat = bumperMat;
+    })
+    const frontBumper = new THREE.Mesh(_shared.bumperGeom, this._bumperMat)
+    frontBumper.position.set(0, -0.04, -1.17)
+    this._group.add(frontBumper)
+    const rearBumper = new THREE.Mesh(_shared.bumperGeom, this._bumperMat)
+    rearBumper.position.set(0, -0.04, 1.17)
+    this._group.add(rearBumper)
 
-    // Headlights
-    const hlGeom = new THREE.BoxGeometry(0.26, 0.14, 0.06);
-    const hlMat  = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    [-0.43, 0.43].forEach(x => {
-      const hl = new THREE.Mesh(hlGeom, hlMat);
-      hl.position.set(x, 0.06, -1.14);
-      this._group.add(hl);
-    });
+    ;[-0.43, 0.43].forEach(x => {
+      const hl = new THREE.Mesh(_shared.hlGeom, _shared.hlMat)
+      hl.position.set(x, 0.06, -1.14)
+      this._group.add(hl)
+    })
 
-    // Tail lights
-    const tlMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
-    const tlGeom = new THREE.BoxGeometry(0.24, 0.12, 0.06);
-    [-0.42, 0.42].forEach(x => {
-      const tl = new THREE.Mesh(tlGeom, tlMat);
-      tl.position.set(x, 0.06, 1.14);
-      this._group.add(tl);
-    });
+    ;[-0.42, 0.42].forEach(x => {
+      const tl = new THREE.Mesh(_shared.tlGeom, _shared.tlMat)
+      tl.position.set(x, 0.06, 1.14)
+      this._group.add(tl)
+    })
 
-    // Wheels
-    const wheelGeom = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 12);
-    const wheelMat  = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.4, metalness: 0.5 });
-    const tireGeom  = new THREE.TorusGeometry(0.28, 0.1, 8, 12);
-    const tireMat   = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
-    const wPositions = [[-0.79, -0.27, -0.72], [0.79, -0.27, -0.72], [-0.79, -0.27, 0.72], [0.79, -0.27, 0.72]];
+    const wPositions = [[-0.79, -0.27, -0.72], [0.79, -0.27, -0.72], [-0.79, -0.27, 0.72], [0.79, -0.27, 0.72]]
     this._wheels = wPositions.map(([x, y, z]) => {
-      const wg = new THREE.Group();
-      const w = new THREE.Mesh(wheelGeom, wheelMat);
-      w.rotation.z = Math.PI / 2;
-      wg.add(w);
-      const tire = new THREE.Mesh(tireGeom, tireMat);
-      tire.rotation.y = Math.PI / 2;
-      wg.add(tire);
-      wg.position.set(x, y, z);
-      this._group.add(wg);
-      return wg;
-    });
+      const wg = new THREE.Group()
+      const w = new THREE.Mesh(_shared.wheelGeom, _shared.wheelMat)
+      w.rotation.z = Math.PI / 2
+      wg.add(w)
+      const tire = new THREE.Mesh(_shared.tireGeom, _shared.tireMat)
+      tire.rotation.y = Math.PI / 2
+      wg.add(tire)
+      wg.position.set(x, y, z)
+      this._group.add(wg)
+      return wg
+    })
 
-    // Underglow
-    const glowGeom = new THREE.PlaneGeometry(1.1, 2.0);
-    const glowMat  = new THREE.MeshBasicMaterial({
+    this._glowMat = new THREE.MeshBasicMaterial({
       color: colorHex, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide
-    });
-    const glow = new THREE.Mesh(glowGeom, glowMat);
-    glow.rotation.x = Math.PI / 2;
-    glow.position.y = -0.44;
-    this._group.add(glow);
-    this._glowMat = glowMat;
+    })
+    const glow = new THREE.Mesh(_shared.glowGeom, this._glowMat)
+    glow.rotation.x = Math.PI / 2
+    glow.position.y = -0.44
+    this._group.add(glow)
 
-
-    this._group.scale.set(1.25, 1.25, 1.25);
-    this.scene.add(this._group);
+    this._group.scale.set(1.25, 1.25, 1.25)
+    this.scene.add(this._group)
   }
 
   _buildBulletPool() {
-    const geom = new THREE.PlaneGeometry(1.2, 1.2)
-    const mat = new THREE.MeshBasicMaterial({ map: bulletTexture(), transparent: true, depthWrite: false })
-    this._bulletMesh = new THREE.InstancedMesh(geom, mat, BULLET_POOL_SIZE)
+    this._bulletMesh = new THREE.InstancedMesh(_shared.bulletGeom, _shared.bulletMat, BULLET_POOL_SIZE)
     this._bulletMesh.frustumCulled = false
     const hide = new THREE.Matrix4().makeScale(0, 0, 0)
     for (let i = 0; i < BULLET_POOL_SIZE; i++) {
       this._bulletMesh.setMatrixAt(i, hide)
-      this._bullets.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0 })
+      this._bullets.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, age: 0, isSuper: false })
     }
     this._bulletMesh.instanceMatrix.needsUpdate = true
     this.scene.add(this._bulletMesh)
@@ -254,7 +275,7 @@ export class Car {
   // Called every tick for remote cars — just sync mesh from received state
   updateRemote(pos, rotQ, vel) {
     if (this.eliminated) return;
-    this._group.position.set(pos.x, pos.y, pos.z);
+    this._group.position.set(pos.x, pos.y + 0.18, pos.z);
     this._group.quaternion.set(rotQ.x, rotQ.y, rotQ.z, rotQ.w);
     this._body.setTranslation(pos, true);
     this._body.setRotation(rotQ, true);
@@ -328,7 +349,7 @@ export class Car {
   }
 
   _syncMesh(pos, rot, dt) {
-    this._group.position.set(pos.x, pos.y, pos.z)
+    this._group.position.set(pos.x, pos.y + 0.18, pos.z)
     this._group.quaternion.set(rot.x, rot.y, rot.z, rot.w)
 
     if (this._squashTimer > 0) {
@@ -398,6 +419,15 @@ export class Car {
         this._fireCooldown = FIRE_RATE
       }
     }
+
+    if (input.superShotPressed && this.superShots > 0 && this._fireCooldown <= 0) {
+      this._fireSuperBullet()
+      this.superShots--
+      this._fireCooldown = FIRE_RATE * 2
+      window.dispatchEvent(new CustomEvent('car:supershot_update', {
+        detail: { slot: this.slot, superShots: this.superShots }
+      }))
+    }
   }
 
   _fireBullet() {
@@ -418,9 +448,36 @@ export class Car {
     b.vx = fwd.x * BULLET_SPEED + vel.x * 0.3
     b.vy = 0
     b.vz = fwd.z * BULLET_SPEED + vel.z * 0.3
+    this.activeBullets++
 
     window.dispatchEvent(new CustomEvent('car:fire', {
       detail: { slot: this.slot, pos: { x: b.x, y: b.y, z: b.z } }
+    }))
+  }
+
+  _fireSuperBullet() {
+    const b = this._bullets.find(x => !x.alive)
+    if (!b) return
+
+    const pos = this._body.translation()
+    const rot = this._body.rotation()
+    _tmpQ.set(rot.x, rot.y, rot.z, rot.w)
+    const fwd = _tmpV.set(0, 0, -1).applyQuaternion(_tmpQ)
+    const vel = this._body.linvel()
+
+    b.alive = true
+    b.age = 0
+    this.activeBullets++
+    b.isSuper = true
+    b.x = pos.x + fwd.x * 1.5
+    b.y = pos.y + 0.3
+    b.z = pos.z + fwd.z * 1.5
+    b.vx = fwd.x * BULLET_SPEED + vel.x * 0.3
+    b.vy = 0
+    b.vz = fwd.z * BULLET_SPEED + vel.z * 0.3
+
+    window.dispatchEvent(new CustomEvent('car:fire', {
+      detail: { slot: this.slot, pos: { x: b.x, y: b.y, z: b.z }, isSuper: true }
     }))
   }
 
@@ -432,6 +489,8 @@ export class Car {
       b.age += dt
       if (b.age >= BULLET_LIFETIME) {
         b.alive = false
+        b.isSuper = false
+        this.activeBullets--
         this._bulletMesh.setMatrixAt(i, _hideM4)
         dirty = true
         continue
@@ -439,11 +498,12 @@ export class Car {
       b.x += b.vx * dt
       b.y += b.vy * dt
       b.z += b.vz * dt
+      const scale = b.isSuper ? _superBulletScale : _bulletScale
       if (_sharedCamera) {
         _bulletM4.compose(
           _tmpV.set(b.x, b.y, b.z),
           _sharedCamera.quaternion,
-          _bulletScale
+          scale
         )
       } else {
         _bulletM4.makeTranslation(b.x, b.y, b.z)
@@ -468,7 +528,7 @@ export class Car {
     this.health = Math.max(0, this.health - amount)
     this._hitFlash = 1.0
     window.dispatchEvent(new CustomEvent('car:hit', {
-      detail: { slot: this.slot, health: this.health, damage: amount, pos: this.position, attackerSlot }
+      detail: { slot: this.slot, name: this.displayName, health: this.health, damage: amount, pos: this.position, attackerSlot }
     }))
     if (this.health === 0 && was > 0) this._eliminate()
   }
@@ -485,6 +545,7 @@ export class Car {
       this._bullets[i].alive = false
       this._bulletMesh.setMatrixAt(i, _hideM4)
     }
+    this.activeBullets = 0
     this._bulletMesh.instanceMatrix.needsUpdate = true
 
     // Visual: wrecked
@@ -496,12 +557,13 @@ export class Car {
     if (this._glowMat)   this._glowMat.opacity = 0;
 
     window.dispatchEvent(new CustomEvent('car:eliminated', {
-      detail: { slot: this.slot, pos: this.position }
+      detail: { slot: this.slot, pos: this.position, name: this.displayName }
     }));
   }
 
   killBullet(idx) {
     if (idx < 0 || idx >= this._bullets.length) return
+    if (this._bullets[idx].alive) this.activeBullets--
     this._bullets[idx].alive = false
     this._bulletMesh.setMatrixAt(idx, _hideM4)
     this._bulletMesh.instanceMatrix.needsUpdate = true
@@ -511,13 +573,13 @@ export class Car {
     this.scene.remove(this._group)
     if (this._bulletMesh) {
       this.scene.remove(this._bulletMesh)
-      this._bulletMesh.geometry.dispose()
-      this._bulletMesh.material.dispose()
+      this._bulletMesh.dispose()
     }
     if (this._bodyMat) this._bodyMat.dispose()
     if (this._cabinMat) this._cabinMat.dispose()
     if (this._bumperMat) this._bumperMat.dispose()
     if (this._glowMat) this._glowMat.dispose()
     if (this._body && this.physics.world) this.physics.world.removeRigidBody(this._body)
+    _releaseShared()
   }
 }
