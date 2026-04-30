@@ -438,6 +438,7 @@ export class Car {
     this._body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     this._body.setLinearDamping(50);
     this._body.setAngularDamping(50);
+    if (this._collider) this._collider.setEnabled(false);
 
     for (let i = 0; i < this._bullets.length; i++) {
       this._bullets[i].alive = false

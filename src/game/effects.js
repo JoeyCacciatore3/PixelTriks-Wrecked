@@ -224,7 +224,10 @@ export class Effects {
   _onHit(d) {
     const damage = d?.damage ?? 10;
     this.particles.burst(d?.pos, 16, 0xff3300, { speed: 10, lifetime: 0.5 });
-    if (d?.pos) this.damageNumbers.spawn(d.pos, damage);
+    if (d?.pos) {
+      this.damageNumbers.spawn(d.pos, damage);
+      this._spawnExplosionSprite(d.pos, 1.2, 300)
+    }
     if (d?.slot === this._localSlot) {
       this.camera.shake(Math.min(0.6, 0.15 + damage * 0.015));
       this._flash(Math.min(0.3, damage / 60));
