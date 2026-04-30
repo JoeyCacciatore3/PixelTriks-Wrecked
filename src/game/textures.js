@@ -67,6 +67,61 @@ const CAR_TEXTURE_MAP = {
 
 export function carBodyTexture(color = '#ef4444', isAI = false) {
   if (isAI) return load('textures/ai_car_body_silver.png', { nearest: true })
-  const path = CAR_TEXTURE_MAP[color] || CAR_TEXTURE_MAP['#ef4444']
-  return load(path, { nearest: true })
+  
+  // Create a unique "Hero" texture for human players
+  return createHeroTexture(color)
+}
+
+function createHeroTexture(color) {
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 512
+  const ctx = canvas.getContext('2d')
+  
+  // Base color
+  ctx.fillStyle = color
+  ctx.fillRect(0, 0, 512, 512)
+  
+  // Racing Stripes (Gold)
+  ctx.fillStyle = '#fbbf24'
+  ctx.fillRect(180, 0, 40, 512)
+  ctx.fillRect(292, 0, 40, 512)
+  
+  // Star Motifs (White)
+  ctx.fillStyle = '#ffffff'
+  for (let i = 0; i < 12; i++) {
+    const x = (i % 3) * 150 + 100
+    const y = Math.floor(i / 3) * 120 + 60
+    drawStar(ctx, x, y, 5, 18, 8)
+  }
+  
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
+}
+
+function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+  let rot = Math.PI / 2 * 3
+  let x = cx
+  let y = cy
+  let step = Math.PI / spikes
+
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - outerRadius)
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius
+    y = cy + Math.sin(rot) * outerRadius
+    ctx.lineTo(x, y)
+    rot += step
+
+    x = cx + Math.cos(rot) * innerRadius
+    y = cy + Math.sin(rot) * innerRadius
+    ctx.lineTo(x, y)
+    rot += step
+  }
+  ctx.lineTo(cx, cy - outerRadius)
+  ctx.closePath()
+  ctx.fill()
 }

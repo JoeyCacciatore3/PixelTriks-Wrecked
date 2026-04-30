@@ -44,6 +44,7 @@ export function setCarCamera(cam) { _sharedCamera = cam }
 const _shared = {
   bodyGeom: null, cabinGeom: null, bumperGeom: null,
   hlGeom: null, tlGeom: null, wheelGeom: null, tireGeom: null, glowGeom: null,
+  spoilerWingGeom: null, spoilerPostGeom: null, scoopGeom: null, exhaustGeom: null,
   hlMat: null, tlMat: null, wheelMat: null, tireMat: null,
   bulletGeom: null, bulletMat: null,
   refCount: 0,
@@ -65,6 +66,11 @@ function _initShared() {
   _shared.tireMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 })
   _shared.bulletGeom = new THREE.PlaneGeometry(1.2, 1.2)
   _shared.bulletMat = new THREE.MeshBasicMaterial({ map: bulletTexture(), transparent: true, depthWrite: false })
+
+  _shared.spoilerWingGeom = new THREE.BoxGeometry(1.4, 0.08, 0.4)
+  _shared.spoilerPostGeom = new THREE.BoxGeometry(0.1, 0.3, 0.1)
+  _shared.scoopGeom = new THREE.BoxGeometry(0.4, 0.15, 0.5)
+  _shared.exhaustGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.4, 8)
 }
 
 function _releaseShared() {
@@ -112,6 +118,8 @@ export class Car {
     this._bulletMesh = null;
     this.activeBullets = 0;
 
+    this._heroParts = new THREE.Group()
+
     this.displayName = CAR_NAMES[this.slot % CAR_NAMES.length]
 
     this._buildMesh();
@@ -125,6 +133,7 @@ export class Car {
 
   get isHuman() { return this._isHuman; }
   set isHuman(val) {
+    const wasHuman = this._isHuman
     this._isHuman = val;
     const isAI = !val
     const tex = carBodyTexture(this.color, isAI)
@@ -142,6 +151,41 @@ export class Car {
       this._bumperMat.color.set(isAI ? 0xffffff : 0x475569)
       this._bumperMat.needsUpdate = true
     }
+
+    if (val && !wasHuman) {
+      this._buildHeroParts()
+      this._group.add(this._heroParts)
+    } else if (!val && wasHuman) {
+      this._group.remove(this._heroParts)
+    }
+  }
+
+  _buildHeroParts() {
+    this._heroParts.clear()
+    
+    // Spoiler
+    const wing = new THREE.Mesh(_shared.spoilerWingGeom, this._bodyMat)
+    wing.position.set(0, 0.45, 1.0)
+    this._heroParts.add(wing)
+    
+    ;[-0.5, 0.5].forEach(x => {
+      const post = new THREE.Mesh(_shared.spoilerPostGeom, this._bodyMat)
+      post.position.set(x, 0.25, 0.95)
+      this._heroParts.add(post)
+    })
+
+    // Hood Scoop
+    const scoop = new THREE.Mesh(_shared.scoopGeom, this._bodyMat)
+    scoop.position.set(0, 0.45, -0.7)
+    this._heroParts.add(scoop)
+    
+    // Exhausts
+    ;[-0.4, 0.4].forEach(x => {
+      const exh = new THREE.Mesh(_shared.exhaustGeom, this._bumperMat)
+      exh.rotation.x = Math.PI / 2
+      exh.position.set(x, -0.15, 1.25)
+      this._heroParts.add(exh)
+    })
   }
 
   _buildMesh() {
