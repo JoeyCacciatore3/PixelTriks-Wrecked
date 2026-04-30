@@ -453,7 +453,7 @@ export class Arena {
   }
 
   _buildPortal() {
-    const isPortalUser = !!window.__portalRef
+    const isPortalUser = !!window.__isPortalUser
 
     if (isPortalUser) {
       const portalPos = { x: 0, y: FLOOR3_H + FLOOR3_THICK / 2 + 3.0, z: 0 }
@@ -581,7 +581,8 @@ export class Arena {
         const dz = p.z - this._portalCenter.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 3) {
           this._portalUsed = true
-          window.open(window.__portalRef, '_blank', 'noopener')
+          const returnUrl = window.__portalRef || 'https://vibej.am/portal/2026'
+          window.open(returnUrl, '_blank', 'noopener')
           break
         }
       }
@@ -598,7 +599,8 @@ export class Arena {
         const dz = p.z - c.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 4) {
           this._exitPortalUsed[i] = true
-          window.open('https://vibej.am/portal/2026', '_blank', 'noopener')
+          const exitUrl = 'https://vibej.am/portal/2026?ref=' + encodeURIComponent(window.location.origin)
+          window.open(exitUrl, '_blank', 'noopener')
           break
         }
       }

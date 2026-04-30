@@ -30,7 +30,10 @@ function showError(err) {
 const portalParams = new URLSearchParams(window.location.search)
 const isPortalUser = portalParams.get('portal') === 'true'
 const portalRef = portalParams.get('ref') || ''
-if (isPortalUser) window.__portalRef = portalRef
+if (isPortalUser) {
+  window.__portalRef = portalRef
+  window.__isPortalUser = true
+}
 
 async function boot() {
   const engine = new Engine(document.getElementById('app'));
