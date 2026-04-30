@@ -36,6 +36,8 @@ export class Arena {
     this._portalRing = null
     this._portalInner = null
     this._portalUsed = false
+    this._exitPortals = []
+    this._exitPortalUsed = [false, false, false, false]
 
     this._buildFloor();
     this._buildWalls();
@@ -451,69 +453,106 @@ export class Arena {
   }
 
   _buildPortal() {
-    const portalPos = { x: 0, y: FLOOR3_H + FLOOR3_THICK / 2 + 3.0, z: 0 }
+    const isPortalUser = !!window.__portalRef
 
-    const ringGeom = new THREE.TorusGeometry(3, 0.2, 16, 32)
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 })
-    this._portalRing = new THREE.Mesh(ringGeom, ringMat)
-    this._portalRing.position.set(portalPos.x, portalPos.y, portalPos.z)
-    this.scene.add(this._portalRing)
+    if (isPortalUser) {
+      const portalPos = { x: 0, y: FLOOR3_H + FLOOR3_THICK / 2 + 3.0, z: 0 }
+      const ringGeom = new THREE.TorusGeometry(3, 0.2, 16, 32)
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xf97316 })
+      this._portalRing = new THREE.Mesh(ringGeom, ringMat)
+      this._portalRing.position.set(portalPos.x, portalPos.y, portalPos.z)
+      this.scene.add(this._portalRing)
 
-    const innerGeom = new THREE.TorusGeometry(2.2, 0.08, 12, 32)
-    const innerMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 })
-    this._portalInner = new THREE.Mesh(innerGeom, innerMat)
-    this._portalInner.position.set(portalPos.x, portalPos.y, portalPos.z)
-    this.scene.add(this._portalInner)
+      const innerGeom = new THREE.TorusGeometry(2.2, 0.08, 12, 32)
+      const innerMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.5 })
+      this._portalInner = new THREE.Mesh(innerGeom, innerMat)
+      this._portalInner.position.set(portalPos.x, portalPos.y, portalPos.z)
+      this.scene.add(this._portalInner)
 
-    const glowLight = new THREE.PointLight(0x3b82f6, 4, 25)
-    glowLight.position.set(portalPos.x, portalPos.y, portalPos.z)
-    this.scene.add(glowLight)
+      const glowLight = new THREE.PointLight(0xf97316, 4, 25)
+      glowLight.position.set(portalPos.x, portalPos.y, portalPos.z)
+      this.scene.add(glowLight)
 
-    // Light beam from above
-    const beamH = 80
-    const beamGeom = new THREE.CylinderGeometry(0.3, 4, beamH, 16, 1, true)
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: 0xccffdd, transparent: true, opacity: 0.08,
-      side: THREE.DoubleSide, depthWrite: false
-    })
-    const beam = new THREE.Mesh(beamGeom, beamMat)
-    beam.position.set(portalPos.x, portalPos.y + beamH / 2, portalPos.z)
-    this.scene.add(beam)
+      const canvas = document.createElement('canvas')
+      canvas.width = 256
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#f97316'
+      ctx.font = 'bold 36px monospace'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('RETURN', 128, 32)
+      const tex = new THREE.CanvasTexture(canvas)
+      const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
+      this._portalLabel = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), labelMat)
+      this._portalLabel.position.set(portalPos.x, portalPos.y + 4.5, portalPos.z)
+      this.scene.add(this._portalLabel)
 
-    const beamInner = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.1, 2, beamH, 12, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: 0x66ffaa, transparent: true, opacity: 0.12,
-        side: THREE.DoubleSide, depthWrite: false
-      })
-    )
-    beamInner.position.set(portalPos.x, portalPos.y + beamH / 2, portalPos.z)
-    this.scene.add(beamInner)
+      this._portalCenter = portalPos
+    }
 
-    const beamLight = new THREE.SpotLight(0x88ffbb, 3, 100, Math.PI * 0.08, 0.6, 1.5)
-    beamLight.position.set(portalPos.x, portalPos.y + 50, portalPos.z)
-    beamLight.target.position.set(portalPos.x, portalPos.y, portalPos.z)
-    this.scene.add(beamLight)
-    this.scene.add(beamLight.target)
+    this._buildExitPortals()
+  }
 
-    // "VIBEJAM" text label floating above portal
+  _buildExitPortals() {
+    const hw = ARENA_W / 2
+    const hd = ARENA_D / 2
+    const rampLen = 30
+    const tilt = Math.asin(12 / rampLen)
+    const rampHalfLen = rampLen / 2
+    const horizHalf = Math.cos(tilt) * rampHalfLen
+    const rise = Math.sin(tilt) * rampHalfLen
+    const centerY = rise - 0.35
+    const topY = centerY + rise + 3
+
+    const rampConfigs = [
+      { x: 0,  z: -(hd - horizHalf + 2), rotY: 0 },
+      { x: 0,  z:  (hd - horizHalf + 2), rotY: Math.PI },
+      { x: -(hw - horizHalf + 2), z: 0,  rotY: Math.PI / 2 },
+      { x:  (hw - horizHalf + 2), z: 0,  rotY: -Math.PI / 2 },
+    ]
+
+    const ringGeom = new THREE.TorusGeometry(2.5, 0.18, 16, 32)
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x22c55e })
+    const innerGeom = new THREE.TorusGeometry(1.8, 0.06, 12, 32)
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.5 })
+
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 64
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#00ff66'
-    ctx.font = 'bold 40px monospace'
+    ctx.fillStyle = '#22c55e'
+    ctx.font = 'bold 32px monospace'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText('VIBEJAM', 128, 32)
-    const tex = new THREE.CanvasTexture(canvas)
-    const labelGeom = new THREE.PlaneGeometry(4, 1)
-    const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
-    this._portalLabel = new THREE.Mesh(labelGeom, labelMat)
-    this._portalLabel.position.set(portalPos.x, portalPos.y + 4.5, portalPos.z)
-    this.scene.add(this._portalLabel)
+    const labelTex = new THREE.CanvasTexture(canvas)
+    const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
 
-    this._portalCenter = portalPos
+    for (let i = 0; i < rampConfigs.length; i++) {
+      const r = rampConfigs[i]
+      const offZ = -horizHalf * 0.7
+      const wx = r.x + Math.sin(r.rotY) * offZ
+      const wz = r.z + Math.cos(r.rotY) * offZ
+
+      const ring = new THREE.Mesh(ringGeom, ringMat)
+      ring.position.set(wx, topY, wz)
+      this.scene.add(ring)
+
+      const inner = new THREE.Mesh(innerGeom, innerMat)
+      inner.position.set(wx, topY, wz)
+      this.scene.add(inner)
+
+      const glow = new THREE.PointLight(0x22c55e, 3, 20)
+      glow.position.set(wx, topY, wz)
+      this.scene.add(glow)
+
+      const label = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.9), labelMat)
+      label.position.set(wx, topY + 3.5, wz)
+      this.scene.add(label)
+
+      this._exitPortals.push({ ring, inner, center: { x: wx, y: topY, z: wz } })
+    }
   }
 
   update(dt, allCars) {
@@ -524,7 +563,16 @@ export class Arena {
       this._portalInner.rotation.x += dt * 0.4
     }
 
-    if (!this._portalUsed && allCars) {
+    for (const ep of this._exitPortals) {
+      ep.ring.rotation.y += dt * 0.6
+      ep.ring.rotation.z += dt * 0.35
+      ep.inner.rotation.y -= dt * 0.8
+      ep.inner.rotation.x += dt * 0.45
+    }
+
+    if (!allCars) return
+
+    if (this._portalCenter && !this._portalUsed) {
       for (const car of allCars) {
         if (car.eliminated || !car.isHuman) continue
         const p = car.position
@@ -533,9 +581,24 @@ export class Arena {
         const dz = p.z - this._portalCenter.z
         if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 3) {
           this._portalUsed = true
-          const ref = window.__portalRef
-          const portalUrl = ref ? ref : 'https://vibej.am/portal/2026'
-          window.open(portalUrl, '_blank', 'noopener')
+          window.open(window.__portalRef, '_blank', 'noopener')
+          break
+        }
+      }
+    }
+
+    for (let i = 0; i < this._exitPortals.length; i++) {
+      if (this._exitPortalUsed[i]) continue
+      const c = this._exitPortals[i].center
+      for (const car of allCars) {
+        if (car.eliminated || !car.isHuman) continue
+        const p = car.position
+        const dx = p.x - c.x
+        const dy = p.y - c.y
+        const dz = p.z - c.z
+        if (Math.sqrt(dx * dx + dy * dy + dz * dz) < 4) {
+          this._exitPortalUsed[i] = true
+          window.open('https://vibej.am/portal/2026', '_blank', 'noopener')
           break
         }
       }
